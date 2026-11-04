@@ -1,0 +1,32 @@
+id: dam
+name: Digital Assets
+version: 0.1.0
+publisher: cbferrum
+summary: "Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights"
+description: README.md
+categories: [marketing, productivity]
+license: AGPL-3.0-only
+homepage: https://github.com/CBFerrum/ferrum-app-dam
+support: https://github.com/CBFerrum/ferrum-app-dam/issues
+runtime: native
+platform: ">=0.3.2, <0.4"
+# The files are Drive's: installing it installs Drive.
+requires: {drive: ">=0.12"}
+packages: [dam]
+uninstall: ask
+# Its own interface at /dam/: assets waiting for approval, rights ending, and the library.
+ui:
+  dist: ui/dist
+contributes:
+  shell.app:
+    - id: dam
+      route: dam
+      title: Digital Assets
+      description: Approved images, video and documents, with their rights
+      icon: hard-drive
+      color: "#c2410c"
+      roles: [Brand Manager, Asset Contributor, Asset User]
+  shell.open:
+    - {id: dam, package: dam, path: "dam/e/{entity}/{id}", list: "dam/e/{entity}"}
+  shell.create:
+    - {id: asset, label: Asset, path: dam/e/MediaAsset/new, entity: MediaAsset}

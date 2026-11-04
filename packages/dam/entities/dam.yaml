@@ -1,0 +1,60 @@
+- name: AssetCollection
+  label: Collection
+  label_plural: Collections
+  kind: master
+  module: dam
+  title_field: collection_name
+  fields:
+    - {name: collection_name, type: data, required: true, unique: true, in_list: true}
+    - {name: owner, type: email, in_list: true}
+    - {name: description, type: text}
+  list: {columns: [collection_name, owner], sort: collection_name asc}
+
+- name: MediaAsset
+  label: Asset
+  label_plural: Assets
+  kind: master
+  module: dam
+  title_field: title
+  description: A file in Drive with what may be done with it. Approved, it is the version approved that may be used, while its rights last.
+  fields:
+    - {name: title, type: data, required: true, in_list: true}
+    - {name: drive_file, type: link, to: DriveFile, required: true, label: File}
+    - {name: kind, type: data, read_only: true, in_list: true, in_filter: true, description: "From the file"}
+    - {name: content_type, type: data, read_only: true}
+    - {name: size, type: int, label: Size (Bytes), read_only: true}
+    - {name: sha256, type: data, label: SHA-256, read_only: true}
+    - {name: collection, type: link, to: AssetCollection, in_list: true, in_filter: true}
+    - {name: tags, type: data, description: "Words to find it by"}
+    - {name: description, type: text}
+    - {name: license, type: select, options: [Owned, Licensed, Royalty Free, Creative Commons, Editorial Only], default: Owned, required: true, in_list: true, in_filter: true}
+    - {name: licensor, type: data, description: "Who licensed it, or whom it credits"}
+    - {name: usage_expires_on, type: date, in_list: true, description: "The last day it may be used"}
+    - {name: territories, type: data, description: "Where it may be used; anywhere when empty"}
+    - {name: people_released, type: check, label: Releases Held, description: "Releases are held for anyone who can be recognised in it"}
+    - {name: status, type: select, options: [Draft, In Review, Approved, Expired, Archived], default: Draft, read_only: true, no_copy: true, in_list: true, in_filter: true}
+    - {name: approved_by, type: email, read_only: true, no_copy: true}
+    - {name: approved_version, type: int, read_only: true, no_copy: true, description: "The file's version that was approved"}
+    - {name: review_note, type: text, read_only: true, no_copy: true}
+    - {name: usages, type: int, read_only: true, no_copy: true, in_list: true}
+  actions:
+    - {name: submit_asset, label: Submit for Review, permission: write, condition: "doc.status == 'Draft'"}
+    - {name: approve_asset, label: Approve It, permission: write, condition: "doc.status == 'In Review'"}
+    - {name: reject_asset, label: Send It Back, permission: write, condition: "doc.status == 'In Review'", params: [{name: note, type: text, label: Why, required: true}]}
+    - {name: archive_asset, label: Archive It, permission: write, condition: "doc.status != 'Archived'"}
+  list: {columns: [title, kind, collection, license, usage_expires_on, status, usages], sort: created_at desc}
+
+- name: AssetUsage
+  label: Asset Usage
+  label_plural: Asset Usages
+  kind: master
+  module: dam
+  title_field: asset
+  description: Where an asset was used, within what it may be used for.
+  fields:
+    - {name: asset, type: link, to: MediaAsset, required: true, in_list: true, in_filter: true}
+    - {name: channel, type: select, options: [Web, Social, Print, Advertising, Email, Internal], default: Web, required: true, in_list: true, in_filter: true}
+    - {name: used_on, type: date, required: true, in_list: true}
+    - {name: placement, type: data, in_list: true, description: "The page, campaign or piece it went into"}
+    - {name: used_by, type: email, read_only: true, no_copy: true, in_list: true}
+  list: {columns: [asset, channel, used_on, placement, used_by], sort: used_on desc}
