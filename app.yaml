@@ -1,6 +1,6 @@
 id: dam
 name: Digital Assets
-version: 0.1.0
+version: 0.1.1
 publisher: cbferrum
 summary: "Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights"
 description: README.md
@@ -25,7 +25,7 @@ contributes:
       description: Approved images, video and documents, with their rights
       icon: hard-drive
       color: "#c2410c"
-      roles: [Brand Manager, Asset Contributor, Asset User]
+      roles: [Brand Manager, Media Contributor, Media User]
   shell.open:
     - {id: dam, package: dam, path: "dam/e/{entity}/{id}", list: "dam/e/{entity}"}
   shell.create:

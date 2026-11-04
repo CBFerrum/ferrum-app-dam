@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Its roles are Media Contributor and Media User: Asset User was also a fixed-assets role, and roles
+  of one name share their rights.
+
 ## 0.1.0
 
 Digital asset management on Drive (FERRUM-ECOSYSTEM-012).

@@ -10,7 +10,7 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
 | 🖼️ App | `dam`, native, in the server |
 | 🧩 Package | `dam` (needs Drive) |
 | 🖥️ Interface | its own, at `/dam/`: assets waiting for review, rights ending soon, and the approved library |
-| 🔐 Roles | Brand Manager, Asset Contributor, Asset User |
+| 🔐 Roles | Brand Manager, Media Contributor, Media User |
 | 📜 Licence | AGPL-3.0-only |
 
 ## Highlights
@@ -26,7 +26,7 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
 - **Usage within the rights.** A usage is of an approved asset, of the version approved, on a day
   no later than its last. An editorial-only asset is not used to sell (advertising or social).
 - **Expiry.** Past its last day, an approved asset expires.
-- **Who sees what.** Asset Users see approved assets only, and their own usages.
+- **Who sees what.** Media Users see approved assets only, and their own usages.
 
 ## Develop
 
@@ -54,6 +54,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.1.1** | Its roles are Media Contributor and Media User, apart from fixed assets' Asset User. |
 | **0.1.0** | Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights (FERRUM-ECOSYSTEM-012). |
 
 ## License

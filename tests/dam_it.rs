@@ -125,8 +125,8 @@ async fn scenario() {
     let t = T { k: k.clone(), tenant, admin };
     t.insert(&t.admin, "DriveSettings", json!({"max_upload_mb": 2, "user_quota_mb": 100, "team_quota_mb": 1000, "trash_days": 30, "max_versions": 5})).await;
     let brand = t.user("brand@brand.test", &["Brand Manager", "Drive User"]).await;
-    let maker = t.user("maker@brand.test", &["Asset Contributor", "Drive User"]).await;
-    let user = t.user("user@brand.test", &["Asset User"]).await;
+    let maker = t.user("maker@brand.test", &["Media Contributor", "Drive User"]).await;
+    let user = t.user("user@brand.test", &["Media User"]).await;
     let today = Utc::now().date_naive();
 
     // ───────────── files in Drive ─────────────
