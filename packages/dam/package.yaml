@@ -1,0 +1,32 @@
+package: dam
+version: 0.1.0
+label: Digital Assets
+description: "Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights"
+depends: [core, drive]
+
+modules:
+  - name: dam
+    label: Digital Assets
+    icon: hard-drive
+    order: 61
+    items: [MediaAsset, AssetUsage, AssetCollection]
+
+roles:
+  - name: Brand Manager
+    description: Approves assets for use, sends them back or archives them, and sees where they went.
+    permissions:
+      - {entity: MediaAsset, read: true, write: true, create: true, export: true}
+      - {entity: AssetCollection, read: true, write: true, create: true}
+      - {entity: AssetUsage, read: true, write: true, create: true, export: true}
+  - name: Asset Contributor
+    description: Adds assets from Drive with their rights, submits them, and records where they are used.
+    permissions:
+      - {entity: MediaAsset, read: true, write: true, create: true}
+      - {entity: AssetCollection, read: true}
+      - {entity: AssetUsage, read: true, create: true}
+  - name: Asset User
+    description: Finds approved assets and records where they are used.
+    permissions:
+      - {entity: MediaAsset, read: true, where: {status: Approved}}
+      - {entity: AssetCollection, read: true}
+      - {entity: AssetUsage, read: true, create: true, if_owner: true}
