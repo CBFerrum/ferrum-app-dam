@@ -54,6 +54,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.1.2** | Rebuilt with Ferrum-Frontend 80ff179: labels name their fields, and linked titles show their titles. |
 | **0.1.1** | Its roles are Media Contributor and Media User, apart from fixed assets' Asset User. |
 | **0.1.0** | Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights (FERRUM-ECOSYSTEM-012). |
 
