@@ -1,5 +1,5 @@
 package: dam
-version: 0.1.0
+version: 0.1.1
 label: Digital Assets
 description: "Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights"
 depends: [core, drive]
@@ -18,13 +18,13 @@ roles:
       - {entity: MediaAsset, read: true, write: true, create: true, export: true}
       - {entity: AssetCollection, read: true, write: true, create: true}
       - {entity: AssetUsage, read: true, write: true, create: true, export: true}
-  - name: Asset Contributor
+  - name: Media Contributor
     description: Adds assets from Drive with their rights, submits them, and records where they are used.
     permissions:
       - {entity: MediaAsset, read: true, write: true, create: true}
       - {entity: AssetCollection, read: true}
       - {entity: AssetUsage, read: true, create: true}
-  - name: Asset User
+  - name: Media User
     description: Finds approved assets and records where they are used.
     permissions:
       - {entity: MediaAsset, read: true, where: {status: Approved}}
