@@ -6,6 +6,8 @@
 //! * its size in pixels, when it was taken (in the camera's own time), the camera, and the creator
 //!   and copyright it names are kept on the asset. Where it was taken never is: the asset only says
 //!   the file records it, so the place can be removed before the file goes out.
+//! * any file's XMP, and a JPEG's IPTC, give its title, caption and keywords, and the creator and
+//!   copyright EXIF leaves unsaid (`embedded`); its keywords become its tags when it has none.
 //!
 //! Files that are not images, images over 40 megapixels or 50 MB, and files that cannot be read as
 //! images keep a note saying why they have no renditions. A new version is looked at again, and the
@@ -29,7 +31,7 @@ const PREVIEW: u32 = 1280;
 const MAX_BYTES: i64 = 50 << 20;
 const MAX_PIXELS: u64 = 40_000_000;
 
-/// What a file's EXIF says of it.
+/// What a file's EXIF says of it, and its XMP or IPTC.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct Facts {
     pub taken: Option<String>,
@@ -38,11 +40,28 @@ pub(crate) struct Facts {
     pub copyright: Option<String>,
     pub orientation: Option<u8>,
     pub located: bool,
+    pub title: Option<String>,
+    pub caption: Option<String>,
+    pub keywords: Vec<String>,
 }
 
 /// When the file was taken, with what, by whom, under whose copyright, how the camera was held, and
-/// whether it records where; nothing for a file without EXIF.
+/// whether it records where (EXIF); its title, caption and keywords (XMP or IPTC), which also give
+/// the creator and copyright EXIF leaves unsaid.
 pub(crate) fn facts(bytes: &[u8]) -> Facts {
+    let said = crate::embedded::said(bytes);
+    let f = exif_facts(bytes);
+    Facts {
+        credit: f.credit.or(said.creator).or(said.credit),
+        copyright: f.copyright.or(said.copyright),
+        title: said.title,
+        caption: said.caption,
+        keywords: said.keywords,
+        ..f
+    }
+}
+
+fn exif_facts(bytes: &[u8]) -> Facts {
     let Ok(exif) = exif::Reader::new().read_from_container(&mut Cursor::new(bytes)) else { return Facts::default() };
     let ascii = |tag: Tag| match exif.get_field(tag, In::PRIMARY).map(|f| &f.value) {
         Some(exif::Value::Ascii(v)) => v.first().cloned(),
@@ -65,6 +84,7 @@ pub(crate) fn facts(bytes: &[u8]) -> Facts {
         copyright: text(Tag::Copyright),
         orientation: exif.get_field(Tag::Orientation, In::PRIMARY).and_then(|f| f.value.get_uint(0)).and_then(|o| u8::try_from(o).ok()),
         located: exif.get_field(Tag::GPSLatitude, In::PRIMARY).is_some() || exif.get_field(Tag::GPSLongitude, In::PRIMARY).is_some(),
+        ..Facts::default()
     }
 }
 
@@ -125,8 +145,8 @@ fn stored(url: Option<&str>) -> Option<Uuid> {
 /// that cannot be read keeps a note.
 pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
     let mut tx = k.db.tenant_tx(ctx.tenant).await?;
-    let due: Vec<(Uuid, Option<String>, Option<String>, Option<String>, Option<String>, Option<i64>, Option<String>)> = sqlx::query_as(
-        "select a.id, f.sha256, v.stored_file, a.thumbnail, a.preview, f.size, f.file_type from e_media_asset a \
+    let due: Vec<(Uuid, Option<String>, Option<String>, Option<String>, Option<String>, Option<i64>, Option<String>, Option<String>)> = sqlx::query_as(
+        "select a.id, f.sha256, v.stored_file, a.thumbnail, a.preview, f.size, f.file_type, a.tags from e_media_asset a \
          join e_drive_file f on f.tenant_id = a.tenant_id and f.id = a.drive_file \
          left join e_drive_file_version v on v.tenant_id = f.tenant_id and v.file = f.id and v.version_no = f.version_no \
          where a.tenant_id = $1 and a.renditions_of is distinct from f.sha256 order by a.id limit $2",
@@ -137,18 +157,21 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
     .await?;
     tx.commit().await?;
     let n = due.len();
-    for (asset, sha, object, old_thumbnail, old_preview, size, file_type) in due {
+    for (asset, sha, object, old_thumbnail, old_preview, size, file_type, tags) in due {
         let mut values = json!({"renditions_of": sha, "width": null, "height": null, "taken": null, "camera": null, "file_credit": null,
-                                "file_copyright": null, "has_location": false, "thumbnail": null, "preview": null, "rendition_note": null});
+                                "file_copyright": null, "file_title": null, "file_caption": null, "file_keywords": null, "has_location": false,
+                                "thumbnail": null, "preview": null, "rendition_note": null});
         let note = |v: &mut Value, why: String| v["rendition_note"] = json!(why);
-        match (object.as_deref().and_then(|o| o.parse::<Uuid>().ok()), file_type.as_deref()) {
-            (_, kind) if kind != Some("Image") => note(
-                &mut values,
-                format!("Renditions are made of images; this file is {}", kind.map(str::to_lowercase).unwrap_or_else(|| "of no known kind".into())),
-            ),
-            (None, _) => note(&mut values, "Its file's content is missing".into()),
-            _ if size.unwrap_or(0) > MAX_BYTES => note(&mut values, format!("It is larger than {} MB, more than renditions are made of", MAX_BYTES >> 20)),
-            (Some(object), _) => match k.read_file(ctx, object).await {
+        let not_image = (file_type.as_deref() != Some("Image")).then(|| {
+            format!("Renditions are made of images; this file is {}", file_type.as_deref().map(str::to_lowercase).unwrap_or_else(|| "of no known kind".into()))
+        });
+        // Any file is read for what it says of itself; only an image is rendered.
+        match object.as_deref().and_then(|o| o.parse::<Uuid>().ok()) {
+            None => note(&mut values, not_image.unwrap_or_else(|| "Its file's content is missing".into())),
+            Some(_) if size.unwrap_or(0) > MAX_BYTES => {
+                note(&mut values, not_image.unwrap_or_else(|| format!("It is larger than {} MB, more than renditions are made of", MAX_BYTES >> 20)))
+            }
+            Some(object) => match k.read_file(ctx, object).await {
                 Err(e @ Error::Unavailable(_)) => return Err(e),
                 Err(e) => note(&mut values, format!("Its file could not be read: {e}")),
                 Ok((_, _, bytes)) => {
@@ -157,12 +180,28 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                     values["camera"] = json!(f.camera);
                     values["file_credit"] = json!(f.credit);
                     values["file_copyright"] = json!(f.copyright);
+                    values["file_title"] = json!(f.title);
+                    values["file_caption"] = json!(f.caption);
                     values["has_location"] = json!(f.located);
+                    if !f.keywords.is_empty() {
+                        let words = f.keywords.join(", ");
+                        // Its keywords are its tags when it has none.
+                        if tags.as_deref().is_none_or(|t| t.trim().is_empty()) {
+                            values["tags"] = json!(words);
+                        }
+                        values["file_keywords"] = json!(words);
+                    }
                     let orientation = f.orientation;
                     // Decoding and scaling hold a thread: not the one answering requests.
-                    let made = tokio::task::spawn_blocking(move || render(&bytes, orientation)).await.map_err(|e| Error::internal(e.to_string()))?;
+                    let made = match not_image {
+                        Some(why) => Err(why),
+                        None => tokio::task::spawn_blocking(move || render(&bytes, orientation))
+                            .await
+                            .map_err(|e| Error::internal(e.to_string()))?
+                            .map_err(|why| format!("It {why}")),
+                    };
                     match made {
-                        Err(why) => note(&mut values, format!("It {why}")),
+                        Err(why) => note(&mut values, why),
                         Ok(r) => {
                             let (ext, ctype) = if r.png { ("png", "image/png") } else { ("jpg", "image/jpeg") };
                             let on = Some(("MediaAsset", asset));
