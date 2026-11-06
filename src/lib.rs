@@ -15,6 +15,7 @@
 //! so a workspace without the `dam` package never runs them.
 
 mod assets;
+mod embedded;
 mod renditions;
 mod sharing;
 

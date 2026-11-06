@@ -6,7 +6,7 @@
 //! approved version within its days, editorial-only assets not used to sell; links handing an
 //! approved asset outside, giving the version approved while they and the asset allow; expiry; renditions
 //! and what a photo's file says of it, made again for a new version and seen by whoever sees the
-//! asset; and who sees and does what.
+//! asset; a PDF's XMP read, its keywords becoming its tags; and who sees and does what.
 
 use base64::Engine;
 use chrono::{Duration, Utc};
@@ -367,7 +367,12 @@ async fn scenario() {
         .write_to(std::io::Cursor::new(&mut clear), image::ImageFormat::Png)
         .unwrap();
     let mark_file = upload("mark.png", clear).await;
-    let brief_file = upload("brief.pdf", b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n".to_vec()).await;
+    // A PDF whose XMP names its title, creator and keywords.
+    let xmp = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title><rdf:Alt><rdf:li xml:lang="x-default">Spring brief</rdf:li></rdf:Alt></dc:title><dc:creator><rdf:Seq><rdf:li>Jo Doe</rdf:li></rdf:Seq></dc:creator><dc:subject><rdf:Bag><rdf:li>spring</rdf:li><rdf:li>brief</rdf:li></rdf:Bag></dc:subject></rdf:Description></rdf:RDF></x:xmpmeta>"#;
+    let mut pdf = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj << /Type /Metadata /Subtype /XML >> stream\n".to_vec();
+    pdf.extend_from_slice(xmp.as_bytes());
+    pdf.extend_from_slice(b"\nendstream endobj\ntrailer << >>\n%%EOF\n");
+    let brief_file = upload("brief.pdf", pdf).await;
     let launch = uid(&t.insert(&maker, "MediaAsset", asset("Launch photo", launch_file, "Owned", json!({}))).await["id"]);
     let mark = uid(&t.insert(&maker, "MediaAsset", asset("Mark", mark_file, "Owned", json!({}))).await["id"]);
     let brief = uid(&t.insert(&maker, "MediaAsset", asset("Brief", brief_file, "Owned", json!({}))).await["id"]);
@@ -389,6 +394,11 @@ async fn scenario() {
     assert_eq!((ctype.as_str(), pixels(&bytes), m["has_location"].as_bool()), ("image/png", (320, 320), Some(false)), "transparency kept");
     let b = t.get("MediaAsset", brief).await;
     assert!(b["thumbnail"].is_null() && b["rendition_note"].as_str().is_some_and(|n| n.contains("made of images")), "{b:?}");
+    assert_eq!(
+        (b["file_title"].as_str(), b["file_credit"].as_str(), b["file_keywords"].as_str(), b["tags"].as_str()),
+        (Some("Spring brief"), Some("Jo Doe"), Some("spring, brief"), Some("spring, brief")),
+        "what its XMP says, its keywords its tags as it had none: {b:?}"
+    );
     let l = t.get("MediaAsset", logo).await;
     assert!(l["rendition_note"].as_str().is_some_and(|n| n.contains("could not be read as an image")), "{l:?}");
     // Renditions are seen by whoever sees the asset.

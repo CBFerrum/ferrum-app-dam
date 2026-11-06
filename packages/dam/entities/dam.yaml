@@ -45,6 +45,9 @@
     - {name: camera, type: data, read_only: true, no_copy: true, in_filter: true}
     - {name: file_credit, type: data, label: Creator In The File, read_only: true, no_copy: true, in_filter: true}
     - {name: file_copyright, type: data, label: Copyright In The File, read_only: true, no_copy: true}
+    - {name: file_title, type: data, label: Title In The File, read_only: true, no_copy: true, description: "From its XMP or IPTC"}
+    - {name: file_caption, type: text, label: Caption In The File, read_only: true, no_copy: true, description: "From its XMP or IPTC"}
+    - {name: file_keywords, type: text, label: Keywords In The File, read_only: true, no_copy: true, description: "From its XMP or IPTC, comma-separated; they become its tags when it has none"}
     - {name: has_location, type: check, label: Records Where It Was Taken, read_only: true, no_copy: true, in_filter: true, description: "Its file records where it was taken. The place is not kept here: remove it from the file before the file goes out"}
     - {name: rendition_note, type: data, read_only: true, no_copy: true, description: "Why it has no renditions"}
     - {name: renditions_of, type: data, read_only: true, no_copy: true, hidden: true, description: "The digest of the file its renditions and facts were made from"}
