@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+A PDF's renditions are its first page. The page is drawn on white with hayro, a PDF rasterizer in
+pure Rust (Apache-2.0 or MIT; its standard fonts are PDFium's, BSD-3-Clause). The thumbnail is 320
+pixels on the page's longest side and the preview 1280, made again for each new version and seen
+by whoever sees the asset. An encrypted PDF, or one that cannot be read, keeps a note saying so.
+A video's frame still has none: the server carries no video decoder.
+
 ## 0.6.4
 
 Rebuilt with Ferrum-Frontend 63280d3: right to left, its pages mirror as they read (icons that point along the line, margins and alignment by the line's start and end, arrow keys along it), and the records pages' words are in Arabic and Hindi.

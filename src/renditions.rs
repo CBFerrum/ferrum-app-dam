@@ -9,9 +9,11 @@
 //! * any file's XMP, and a JPEG's IPTC, give its title, caption and keywords, and the creator and
 //!   copyright EXIF leaves unsaid (`embedded`); its keywords become its tags when it has none.
 //!
-//! An office document's renditions are made of the picture of its first page it carries, when it
-//! carries one. Other files, images over 40 megapixels or 50 MB, and files that cannot be read as
-//! images keep a note saying why they have no renditions. A new version is looked at again, and the
+//! A PDF's renditions are made of its first page, drawn on white (hayro, in pure Rust); an
+//! encrypted PDF, or one that cannot be read, keeps a note. An office document's are made of the
+//! picture of its first page it carries, when it carries one. Other files, images over 40
+//! megapixels or 50 MB, and files that cannot be read as images keep a note saying why they have
+//! no renditions. A new version is looked at again, and the
 //! renditions of the one before are removed.
 
 use crate::obj;
@@ -144,6 +146,27 @@ pub(crate) fn render(bytes: &[u8], orientation: Option<u8>) -> std::result::Resu
     Ok(Rendered { width: img.width(), height: img.height(), thumbnail: encode(fit(THUMBNAIL, true))?, preview: encode(fit(PREVIEW, false))?, png })
 }
 
+/// A PDF's first page drawn on white, its longest side the preview's, as PNG: what its renditions
+/// are made of.
+// ponytail: drawn in full on the round's blocking thread; a page heavy enough to matter would want
+// a time limit, which hayro does not offer.
+pub(crate) fn pdf_first_page(bytes: &[u8]) -> std::result::Result<Vec<u8>, String> {
+    use hayro::hayro_syntax::{LoadPdfError, Pdf};
+    let pdf = Pdf::new(bytes.to_vec()).map_err(|e| match e {
+        LoadPdfError::Decryption(_) => "is encrypted, so its first page cannot be drawn".to_string(),
+        LoadPdfError::Invalid => "could not be read as a PDF".to_string(),
+    })?;
+    let page = pdf.pages().first().ok_or("has no pages")?;
+    let (w, h) = page.render_dimensions();
+    if !(w > 0.0 && h > 0.0) {
+        return Err("has a first page with no size".into());
+    }
+    let scale = PREVIEW as f32 / w.max(h);
+    let settings = hayro::PixmapSettings { x_scale: scale, y_scale: scale, bg_color: hayro::vello_cpu::color::palette::css::WHITE };
+    let pixmap = hayro::render(page, &hayro::RenderCache::new(), &Default::default(), &hayro::RenderSettings::default(), &settings);
+    pixmap.into_png().map_err(|e| format!("its first page could not be written: {e}"))
+}
+
 /// A stored file's id from its address (`/files/{id}`).
 fn stored(url: Option<&str>) -> Option<Uuid> {
     url?.strip_prefix("/files/")?.parse().ok()
@@ -174,7 +197,7 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
         let note = |v: &mut Value, why: String| v["rendition_note"] = json!(why);
         let not_image = (file_type.as_deref() != Some("Image")).then(|| {
             format!(
-                "Renditions are made of images, and of documents that carry a picture of their first page; this file is {}",
+                "Renditions are made of images, PDFs, and documents that carry a picture of their first page; this file is {}",
                 file_type.as_deref().map(str::to_lowercase).unwrap_or_else(|| "of no known kind".into())
             )
         });
@@ -213,11 +236,16 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                     // A document's picture of its first page, when it carries one.
                     let picture = not_image.as_ref().and_then(|_| crate::preview::embedded_thumbnail(&bytes));
                     let image = not_image.is_none();
+                    let pdf = not_image.is_some() && picture.is_none() && bytes.starts_with(b"%PDF-");
                     let made = match (not_image, picture) {
                         (Some(_), Some(picture)) => tokio::task::spawn_blocking(move || render(&picture, None))
                             .await
                             .map_err(|e| Error::internal(e.to_string()))?
                             .map_err(|why| format!("Its picture of its first page {why}")),
+                        (Some(_), None) if pdf => tokio::task::spawn_blocking(move || pdf_first_page(&bytes).and_then(|page| render(&page, None)))
+                            .await
+                            .map_err(|e| Error::internal(e.to_string()))?
+                            .map_err(|why| format!("It {why}")),
                         (Some(why), None) => Err(why),
                         (None, _) => tokio::task::spawn_blocking(move || render(&bytes, orientation))
                             .await
@@ -285,6 +313,41 @@ mod tests {
         assert!(r.png && r.thumbnail.starts_with(b"\x89PNG"), "transparency kept");
         assert!(render(b"\x89PNG\r\n\x1a\nnot really", None).unwrap_err().starts_with("could not be read as an image"));
         assert_eq!(facts(&jpeg(10, 10)), Facts::default(), "no EXIF, nothing said");
+    }
+
+    /// A PDF of one page, `w` by `h` points, a red rectangle on it; its cross-reference worked out.
+    fn pdf(w: u32, h: u32) -> Vec<u8> {
+        let content = format!("1 0 0 rg 0 0 {w} {h} re f");
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w} {h}] /Contents 4 0 R >>"),
+            format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+        ];
+        let mut out = b"%PDF-1.4\n".to_vec();
+        let mut offsets = vec![];
+        for (i, o) in objects.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend(format!("{} 0 obj\n{o}\nendobj\n", i + 1).bytes());
+        }
+        let xref = out.len();
+        out.extend(format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).bytes());
+        for o in offsets {
+            out.extend(format!("{o:010} 00000 n \n").bytes());
+        }
+        out.extend(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objects.len() + 1).bytes());
+        out
+    }
+
+    #[test]
+    fn renditions_of_a_pdf_are_its_first_page() {
+        let page = pdf_first_page(&pdf(200, 100)).unwrap();
+        assert_eq!(size(&page), (1280, 640));
+        let drawn = image::load_from_memory(&page).unwrap().to_rgb8();
+        assert_eq!(drawn.get_pixel(640, 320).0, [255, 0, 0], "the page's red, drawn");
+        let r = render(&page, None).unwrap();
+        assert_eq!((size(&r.thumbnail), size(&r.preview)), ((320, 160), (1280, 640)));
+        assert_eq!(pdf_first_page(b"%PDF-1.4 not really").unwrap_err(), "could not be read as a PDF");
     }
 
     #[test]

@@ -6,8 +6,8 @@
 //! approved version within its days, editorial-only assets not used to sell; links handing an
 //! approved asset outside, giving the version approved while they and the asset allow; expiry; renditions
 //! and what a photo's file says of it, made again for a new version and seen by whoever sees the
-//! asset; a PDF's XMP read, its keywords becoming its tags; an office document's picture of its first
-//! page its renditions; the people and place a file shows and its licence's terms, approval waiting
+//! asset; a PDF's XMP read, its keywords becoming its tags; a PDF's first page drawn as its
+//! renditions; an office document's picture of its first page its renditions; the people and place a file shows and its licence's terms, approval waiting
 //! for releases; previews of what a page shows by itself, for whoever sees the asset; and who sees
 //! and does what.
 
@@ -415,7 +415,8 @@ async fn scenario() {
     let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&m["thumbnail"])).await.unwrap();
     assert_eq!((ctype.as_str(), pixels(&bytes), m["has_location"].as_bool()), ("image/png", (320, 320), Some(false)), "transparency kept");
     let b = t.get("MediaAsset", brief).await;
-    assert!(b["thumbnail"].is_null() && b["rendition_note"].as_str().is_some_and(|n| n.contains("made of images")), "{b:?}");
+    // A PDF with no pages to draw (only its XMP) says so.
+    assert!(b["thumbnail"].is_null() && b["rendition_note"].as_str().is_some_and(|n| n.contains("PDF") || n.contains("no pages")), "{b:?}");
     assert_eq!(
         (b["file_title"].as_str(), b["file_credit"].as_str(), b["file_keywords"].as_str(), b["tags"].as_str()),
         (Some("Spring brief"), Some("Jo Doe"), Some("spring, brief"), Some("spring, brief")),
@@ -454,6 +455,9 @@ async fn scenario() {
     mp4.resize(4096, 0);
     let clip_file = upload("clip.mp4", mp4).await;
     let clip = uid(&t.insert(&maker, "MediaAsset", asset("Clip", clip_file, "Owned", json!({}))).await["id"]);
+    // A PDF of one page, 300 by 600 points: its first page drawn makes its renditions.
+    let flyer_file = upload("flyer.pdf", one_page_pdf(300, 600)).await;
+    let flyer = uid(&t.insert(&maker, "MediaAsset", asset("Flyer", flyer_file, "Owned", json!({}))).await["id"]);
     ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
     let d = t.get("MediaAsset", spec).await;
     let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&d["thumbnail"])).await.unwrap();
@@ -461,6 +465,12 @@ async fn scenario() {
     assert!(d["preview"].is_string() && d["width"].is_null() && d["height"].is_null() && d["rendition_note"].is_null(), "{d:?}");
     let c = t.get("MediaAsset", clip).await;
     assert!(c["thumbnail"].is_null() && c["rendition_note"].as_str().is_some_and(|n| n.ends_with("this file is video")), "{c:?}");
+    let fl = t.get("MediaAsset", flyer).await;
+    let (_, _, bytes) = t.k.read_file(&t.admin, file_id(&fl["thumbnail"])).await.unwrap();
+    assert_eq!(pixels(&bytes), (160, 320), "{fl:?}");
+    let (_, _, bytes) = t.k.read_file(&t.admin, file_id(&fl["preview"])).await.unwrap();
+    assert_eq!(pixels(&bytes), (640, 1280));
+    assert!(fl["width"].is_null() && fl["rendition_note"].is_null(), "a page's picture says nothing of the file's size: {fl:?}");
 
     // The people and the place a file shows, and its licence's terms: approved only once releases are held.
     let said = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"><Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>Ana Rao</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage><Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Sydney</Iptc4xmpExt:City></rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown><xmpRights:UsageTerms><rdf:Alt><rdf:li xml:lang="x-default">Web only</rdf:li></rdf:Alt></xmpRights:UsageTerms></rdf:Description></rdf:RDF></x:xmpmeta>"#;
@@ -509,4 +519,28 @@ async fn scenario() {
     t.act(&brand, press, "archive_asset", Value::Null).await.unwrap();
     refused(t.k.insert(&user, "AssetUsage", obj(usage(press, "Web", today))).await, "invalid", "not approved for use");
     assert!(matches!(open(&k, tenant, &archived_link).await, Err(Error::NotFound(_))), "archived, its links give nothing");
+}
+
+/// A PDF of one page, `w` by `h` points, filled blue; its cross-reference worked out.
+fn one_page_pdf(w: u32, h: u32) -> Vec<u8> {
+    let content = format!("0 0 1 rg 0 0 {w} {h} re f");
+    let objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+        format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w} {h}] /Contents 4 0 R >>"),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+    ];
+    let mut out = b"%PDF-1.4\n".to_vec();
+    let mut offsets = vec![];
+    for (i, o) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend(format!("{} 0 obj\n{o}\nendobj\n", i + 1).bytes());
+    }
+    let xref = out.len();
+    out.extend(format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).bytes());
+    for o in offsets {
+        out.extend(format!("{o:010} 00000 n \n").bytes());
+    }
+    out.extend(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objects.len() + 1).bytes());
+    out
 }
