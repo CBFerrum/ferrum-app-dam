@@ -1,7 +1,9 @@
 //! What a file says of itself beyond EXIF: its XMP packet (in photos, PDFs and office documents
 //! alike) and a JPEG's IPTC record (Photoshop's APP13 segment). Its title, caption, creator,
-//! credit line, copyright and keywords, read as text and never run. XMP is read before IPTC, as
-//! the newer of the two; each is only looked for where it is written.
+//! credit line, copyright and keywords; the place it shows (IPTC's location shown, never the
+//! location created, where it was taken); the people it shows; and its licence's usage terms and
+//! web address. Read as text and never run. XMP is read before IPTC, as the newer of the two; each
+//! is only looked for where it is written.
 
 /// What a file's XMP or IPTC says.
 #[derive(Debug, Default, PartialEq)]
@@ -12,6 +14,10 @@ pub(crate) struct Said {
     pub credit: Option<String>,
     pub copyright: Option<String>,
     pub keywords: Vec<String>,
+    pub place: Option<String>,
+    pub people: Vec<String>,
+    pub terms: Option<String>,
+    pub licence: Option<String>,
 }
 
 /// A value kept: at most this many characters, and this many keywords.
@@ -29,7 +35,25 @@ pub(crate) fn said(bytes: &[u8]) -> Said {
         credit: x.credit.or(i.credit),
         copyright: x.copyright.or(i.copyright),
         keywords: if x.keywords.is_empty() { i.keywords } else { x.keywords },
+        place: x.place.or(i.place),
+        people: x.people,
+        terms: x.terms,
+        licence: x.licence,
     }
+}
+
+/// A place from its parts, the smallest first, those said joined: "Pier 4, Sydney, NSW, Australia".
+fn place(parts: [Option<String>; 4]) -> Option<String> {
+    let said: Vec<String> = parts.into_iter().flatten().collect();
+    (!said.is_empty()).then(|| said.join(", "))
+}
+
+/// The inside of element `name`'s first occurrence (`<name …>…</name>`), if it has one.
+fn inside<'a>(xmp: &'a str, name: &str) -> Option<&'a str> {
+    let start = xmp.find(&format!("<{name}>")).or_else(|| xmp.find(&format!("<{name} ")))?;
+    let open_end = start + xmp[start..].find('>')? + 1;
+    let close = open_end + xmp[open_end..].find(&format!("</{name}>"))?;
+    Some(&xmp[open_end..close])
 }
 
 fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
@@ -138,6 +162,14 @@ fn values(xmp: &str, name: &str) -> Vec<String> {
 fn from_xmp(xmp: &str) -> Said {
     let first = |name: &str| values(xmp, name).into_iter().next();
     let creators = values(xmp, "dc:creator");
+    // The location shown, from IPTC Extension's structure or else IPTC Core's fields, which name
+    // the place shown too. Never the location created.
+    let shown = inside(xmp, "Iptc4xmpExt:LocationShown").map(|block| {
+        let part = |name: &str| values(block, name).into_iter().next();
+        place([part("Iptc4xmpExt:Sublocation"), part("Iptc4xmpExt:City"), part("Iptc4xmpExt:ProvinceState"), part("Iptc4xmpExt:CountryName")])
+    });
+    let core = || place([first("Iptc4xmpCore:Location"), first("photoshop:City"), first("photoshop:State"), first("photoshop:Country")]);
+    let licence = first("xmpRights:WebStatement").filter(|u| u.starts_with("https://") || u.starts_with("http://"));
     Said {
         title: first("dc:title"),
         caption: first("dc:description"),
@@ -145,6 +177,10 @@ fn from_xmp(xmp: &str) -> Said {
         credit: first("photoshop:Credit"),
         copyright: first("dc:rights"),
         keywords: values(xmp, "dc:subject").into_iter().take(KEYWORDS).collect(),
+        place: shown.flatten().or_else(core),
+        people: values(xmp, "Iptc4xmpExt:PersonInImage").into_iter().take(KEYWORDS).collect(),
+        terms: first("xmpRights:UsageTerms"),
+        licence,
     }
 }
 
@@ -197,10 +233,12 @@ fn from_resources(mut d: &[u8]) -> Said {
     Said::default()
 }
 
-/// IPTC's datasets of record 2: the title (5), keywords (25), the by-line (80), the credit (110),
-/// the copyright (116) and the caption (120). Text is UTF-8, or else Latin-1.
+/// IPTC's datasets of record 2: the title (5), keywords (25), the by-line (80), the city (90), the
+/// sub-location (92), the province or state (95), the country (101), the credit (110), the
+/// copyright (116) and the caption (120). Text is UTF-8, or else Latin-1.
 fn from_iim(mut d: &[u8]) -> Said {
     let mut s = Said::default();
+    let (mut city, mut sub, mut province, mut country) = (None, None, None, None);
     while d.len() >= 5 && d[0] == 0x1C {
         let (record, set) = (d[1], d[2]);
         let len = u16::from_be_bytes([d[3], d[4]]);
@@ -224,6 +262,10 @@ fn from_iim(mut d: &[u8]) -> Said {
                 5 => first(&mut s.title, t),
                 25 if s.keywords.len() < KEYWORDS => s.keywords.push(t),
                 80 => first(&mut s.creator, t),
+                90 => first(&mut city, t),
+                92 => first(&mut sub, t),
+                95 => first(&mut province, t),
+                101 => first(&mut country, t),
                 110 => first(&mut s.credit, t),
                 116 => first(&mut s.copyright, t),
                 120 => first(&mut s.caption, t),
@@ -232,6 +274,7 @@ fn from_iim(mut d: &[u8]) -> Said {
         }
         d = &d[5 + usize::from(len)..];
     }
+    s.place = place([sub, city, province, country]);
     s
 }
 
@@ -253,6 +296,11 @@ mod tests {
 <dc:creatorTool>Not the creator</dc:creatorTool>
 <dc:rights><rdf:Alt><rdf:li xml:lang="x-default">© 2026 Northwind</rdf:li></rdf:Alt></dc:rights>
 <dc:subject><rdf:Bag><rdf:li>spring</rdf:li><rdf:li>launch</rdf:li></rdf:Bag></dc:subject>
+<Iptc4xmpExt:LocationCreated><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Never kept</Iptc4xmpExt:City></rdf:li></rdf:Bag></Iptc4xmpExt:LocationCreated>
+<Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:Sublocation>Pier 4</Iptc4xmpExt:Sublocation><Iptc4xmpExt:City>Sydney</Iptc4xmpExt:City><Iptc4xmpExt:CountryName>Australia</Iptc4xmpExt:CountryName></rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown>
+<Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>Ana Rao</rdf:li><rdf:li>Bo Lin</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage>
+<xmpRights:UsageTerms><rdf:Alt><rdf:li xml:lang="x-default">Editorial use only, credit Northwind</rdf:li></rdf:Alt></xmpRights:UsageTerms>
+<xmpRights:WebStatement>https://northwind.test/licence</xmpRights:WebStatement>
 </rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>"#;
 
     /// A JPEG holding an IPTC record of `datasets` (dataset, text) in its APP13 segment.
@@ -289,19 +337,34 @@ mod tests {
         assert_eq!(s.creator.as_deref(), Some("Jo Doe, Sam Lee"), "not dc:creatorTool");
         assert_eq!((s.credit.as_deref(), s.copyright.as_deref()), (Some("Northwind & Co"), Some("© 2026 Northwind")));
         assert_eq!(s.keywords, ["spring", "launch"]);
+        assert_eq!(s.place.as_deref(), Some("Pier 4, Sydney, Australia"), "the location shown, never the location created");
+        assert_eq!(s.people, ["Ana Rao", "Bo Lin"]);
+        assert_eq!((s.terms.as_deref(), s.licence.as_deref()), (Some("Editorial use only, credit Northwind"), Some("https://northwind.test/licence")));
+        let not_web = PACKET.replace("https://northwind.test/licence", "javascript:alert(1)");
+        assert_eq!(said(not_web.as_bytes()).licence, None, "only a web address is kept");
         assert_eq!(said(b"%PDF-1.7 nothing said"), Said::default());
         assert_eq!(said(b"<x:xmpmeta never closed"), Said::default());
     }
 
     #[test]
     fn iptc_in_a_jpeg() {
-        let jpeg = jpeg_with_iptc(&[(5, b"Harbour at dawn"), (80, b"Jo Doe"), (116, b"Brand Co"), (25, b"harbour"), (25, b"Caf\xe9"), (120, b"Boats  ")]);
+        let jpeg = jpeg_with_iptc(&[
+            (5, b"Harbour at dawn"),
+            (80, b"Jo Doe"),
+            (116, b"Brand Co"),
+            (25, b"harbour"),
+            (25, b"Caf\xe9"),
+            (120, b"Boats  "),
+            (90, b"Hobart"),
+            (101, b"Australia"),
+        ]);
         let s = said(&jpeg);
         assert_eq!(
             (s.title.as_deref(), s.creator.as_deref(), s.copyright.as_deref(), s.caption.as_deref()),
             (Some("Harbour at dawn"), Some("Jo Doe"), Some("Brand Co"), Some("Boats"))
         );
         assert_eq!(s.keywords, ["harbour", "Café"], "Latin-1 read as such");
+        assert_eq!(s.place.as_deref(), Some("Hobart, Australia"));
         // XMP is read first; IPTC says what it leaves unsaid.
         let mut both = jpeg_with_iptc(&[(5, b"From IPTC"), (110, b"IPTC credit")]);
         both.truncate(both.len() - 2);
