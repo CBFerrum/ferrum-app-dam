@@ -103,6 +103,12 @@ impl DocHook for AssetHook {
                 }
             }
             "archive_asset" => json!({"status": "Archived"}),
+            "share_asset" => {
+                if !decides(hc.ctx) {
+                    return Err(Error::Forbidden("a Brand Manager shares an asset outside".into()));
+                }
+                return Ok(Some(crate::sharing::share(hc, doc, params).await?));
+            }
             _ => return Ok(None),
         };
         let status = values["status"].clone();
@@ -187,4 +193,24 @@ pub(crate) async fn upkeep(k: &Kernel, ctx: &Ctx, tx: &mut Tx, today: NaiveDate)
 /// Today, for callers without a date of their own.
 pub(crate) fn today() -> NaiveDate {
     Utc::now().date_naive()
+}
+
+pub struct ShareHook;
+
+#[async_trait]
+impl DocHook for ShareHook {
+    fn name(&self) -> &'static str {
+        "dam.share"
+    }
+
+    async fn action(&self, hc: &mut HookCtx<'_>, name: &str, doc: &Doc, _params: &Value) -> Result<Option<Value>> {
+        if name != "revoke_share" {
+            return Ok(None);
+        }
+        if !decides(hc.ctx) {
+            return Err(Error::Forbidden("a Brand Manager stops a shared link".into()));
+        }
+        let share = id(doc, "id").ok_or_else(|| Error::internal("a link without an id"))?;
+        Ok(Some(crate::sharing::revoke(hc.kernel, &elevated(hc.ctx), hc.tx, share).await?))
+    }
 }
