@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+Shared outside the workspace (FERRUM-ECOSYSTEM-012).
+
+- **Share It Outside:** a Brand Manager shares an approved asset with someone, for a use within its
+  rights (an editorial-only asset never to sell), until a day no later than its last, for up to
+  1,000 downloads (20 unless set). The link is shown once, and only its digest is kept. The share
+  is recorded as a use of the asset.
+- **The link:** at `/api/site/{workspace}/dam/s/{token}`, it gives the version approved, as the
+  stored file, with nothing to cache or index. It works only while it is not stopped, its day has
+  not passed and its downloads last (counted under a lock, so two at once never pass them), and
+  the asset stays approved with that version and within its days. Otherwise it answers as an
+  unknown link does. Stop It ends a link.
+- **Personal data:** requests reach who keeps a collection, approves, uses and shares an asset.
+
 ## 0.2.1
 
 Rebuilt with Ferrum-Frontend bb60115: a record page reads an empty number or check as the server does, so an action whose condition needs one shows, and a workspace's settings open as their one record.

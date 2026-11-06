@@ -3,7 +3,8 @@
 //! reset first), with Drive installed: files uploaded to Drive made assets whose type, size and
 //! digest come from the file; licences naming their licensor and days; approval by a Brand Manager
 //! of the file's version then; a new version sending the asset back for review; usages only of the
-//! approved version within its days, editorial-only assets not used to sell; expiry; renditions
+//! approved version within its days, editorial-only assets not used to sell; links handing an
+//! approved asset outside, giving the version approved while they and the asset allow; expiry; renditions
 //! and what a photo's file says of it, made again for a new version and seen by whoever sees the
 //! asset; and who sees and does what.
 
@@ -11,7 +12,7 @@ use base64::Engine;
 use chrono::{Duration, Utc};
 use ferrum_kernel::secret::SecretKey;
 use ferrum_kernel::tenant::NewTenant;
-use ferrum_kernel::{Ctx, Db, DbConfig, Doc, Error, HookRegistry, Kernel, KernelSettings, ListQuery};
+use ferrum_kernel::{Ctx, Db, DbConfig, Doc, Error, HookRegistry, Kernel, KernelSettings, ListQuery, SiteRequest};
 use ferrum_meta::Catalog;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -94,6 +95,26 @@ fn file_id(url: &Value) -> Uuid {
 /// An image's size in pixels.
 fn pixels(bytes: &[u8]) -> (u32, u32) {
     image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().unwrap().into_dimensions().unwrap()
+}
+
+/// A shared link opened by anyone, as the platform hands it to the app: the stored file it answers
+/// with, or the error.
+async fn open(k: &Kernel, tenant: Uuid, link: &str) -> Result<Uuid, Error> {
+    let token = link.rsplit('/').next().unwrap_or_default();
+    let site = k.hooks.site("dam").cloned().expect("the shared links' route");
+    let req = SiteRequest {
+        tenant,
+        user: None,
+        method: "GET".into(),
+        path: format!("/s/{token}"),
+        query: Default::default(),
+        headers: Default::default(),
+        body: vec![],
+        client_ip: "203.0.113.20".into(),
+    };
+    let r = site.handle(k, req).await?;
+    let file = r.headers.iter().find(|(name, _)| name == ferrum_kernel::hooks::STREAM_FILE_HEADER).map(|(_, v)| v.parse().unwrap());
+    Ok(file.expect("answered with the stored file"))
 }
 
 struct T {
@@ -265,19 +286,78 @@ async fn scenario() {
     refused(t.k.insert(&user, "AssetUsage", obj(usage(stock, "Web", last_day + Duration::days(1)))).await, "invalid", "after the last day");
     t.insert(&user, "AssetUsage", usage(stock, "Print", last_day)).await;
 
+    // ───────────── handed outside, by a link ─────────────
+    let share = |recipient: &str, channel: &str, until: chrono::NaiveDate, downloads: Option<i64>| json!({"recipient": recipient, "channel": channel, "expires_on": until.to_string(), "max_downloads": downloads});
+    refused(t.act(&maker, logo, "share_asset", share("Daily Times", "Web", today + Duration::days(7), None)).await, "forbidden", "a Brand Manager shares");
+    refused(t.act(&brand, press, "share_asset", share("Ad agency", "Advertising", today + Duration::days(7), None)).await, "invalid", "not used to sell");
+    refused(t.act(&brand, stock, "share_asset", share("Printer", "Print", last_day + Duration::days(1), None)).await, "invalid", "after the last day");
+    refused(t.act(&brand, logo, "share_asset", share("Daily Times", "Web", today - Duration::days(1), None)).await, "invalid", "today or later");
+    let usages = t.get("MediaAsset", logo).await["usages"].as_i64().unwrap();
+    let shared = t.act(&brand, logo, "share_asset", share("Daily Times", "Web", today + Duration::days(7), Some(2))).await.expect("shared");
+    let link = shared["link"].as_str().unwrap().to_string();
+    assert!(link.contains("/api/site/brand/dam/s/") && shared["note"].as_str().is_some_and(|n| n.contains("once")), "{shared}");
+    assert_eq!(t.get("MediaAsset", logo).await["usages"].as_i64(), Some(usages + 1), "a use like any other");
+    let kept = t.k.list(&brand, "AssetShare", &ListQuery::default()).await.unwrap().rows;
+    let token = link.rsplit('/').next().unwrap();
+    assert!(kept.len() == 1 && kept[0]["recipient"] == "Daily Times" && !kept[0].values().any(|v| v.as_str() == Some(token)), "only its digest is kept");
+    // It gives the version approved, as the stored file, for its downloads.
+    let v1: Option<Option<String>> = {
+        let mut tx = k.db.tenant_tx(tenant).await.unwrap();
+        let v = sqlx::query_scalar("select stored_file from e_drive_file_version where tenant_id = $1 and file = $2 and version_no = 1")
+            .bind(tenant)
+            .bind(logo_file)
+            .fetch_optional(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        v
+    };
+    let v1: Uuid = v1.flatten().unwrap().parse().unwrap();
+    assert_eq!(open(&k, tenant, &link).await.unwrap(), v1);
+    assert_eq!(open(&k, tenant, &link).await.unwrap(), v1);
+    assert!(matches!(open(&k, tenant, &link).await, Err(Error::NotFound(_))), "two downloads, no more");
+    assert!(matches!(open(&k, tenant, "/api/site/brand/dam/s/not-a-token").await, Err(Error::NotFound(_))));
+    // Stopped, it is gone; another stays until the asset changes.
+    let again =
+        t.act(&brand, logo, "share_asset", share("Printer", "Print", today + Duration::days(7), None)).await.unwrap()["link"].as_str().unwrap().to_string();
+    let second =
+        t.k.list(
+            &brand,
+            "AssetShare",
+            &ListQuery { filters: ferrum_kernel::query::parse_filters(&json!({"recipient": "Printer"})).unwrap(), ..Default::default() },
+        )
+        .await
+        .unwrap()
+        .rows;
+    let printer =
+        t.act(&brand, press, "share_asset", share("Printer", "Web", today + Duration::days(3), None)).await.unwrap()["link"].as_str().unwrap().to_string();
+    t.k.run_action(&brand, "AssetShare", uid(&second[0]["id"]), "revoke_share", Value::Null).await.expect("stopped");
+    assert!(matches!(open(&k, tenant, &again).await, Err(Error::NotFound(_))), "stopped");
+    open(&k, tenant, &printer).await.expect("another still works");
+
     // ───────────── a new version, and expiry ─────────────
+    let before =
+        t.act(&brand, logo, "share_asset", share("Radio", "Web", today + Duration::days(3), None)).await.unwrap()["link"].as_str().unwrap().to_string();
+    assert_eq!(open(&k, tenant, &before).await.unwrap(), v1);
     let b64 = base64::engine::general_purpose::STANDARD.encode(png(9));
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": logo_file, "content_base64": b64})).await.expect("a new logo");
     refused(t.k.insert(&user, "AssetUsage", obj(usage(logo, "Web", today))).await, "invalid", "changed since it was approved");
+    assert!(matches!(open(&k, tenant, &before).await, Err(Error::NotFound(_))), "its file changed since it was approved: nothing until it is again");
     ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
     let back = t.get("MediaAsset", logo).await;
     assert_eq!(back["status"], "In Review", "back for review once its file changed");
     assert!(back["review_note"].as_str().unwrap().contains("since version 1"));
     t.act(&brand, logo, "approve_asset", Value::Null).await.unwrap();
     assert_eq!(t.get("MediaAsset", logo).await["approved_version"], 2);
+    let v2 = open(&k, tenant, &before).await.expect("approved again, the link gives the version approved now");
+    assert_ne!(v2, v1);
     t.insert(&user, "AssetUsage", usage(logo, "Web", today)).await;
     ferrum_app_dam::maintenance_on(&k, last_day + Duration::days(1)).await.unwrap();
     assert_eq!(t.status(stock).await, "Expired");
+    // An asset archived: its links give nothing more.
+    let archived_link =
+        t.act(&brand, press, "share_asset", share("Archive test", "Web", today + Duration::days(3), None)).await.unwrap()["link"].as_str().unwrap().to_string();
+    open(&k, tenant, &archived_link).await.expect("approved, it works");
     assert_eq!(t.status(press).await, "Approved", "no last day, no expiry");
 
     // ───────────── renditions, and what the file says ─────────────
@@ -333,4 +413,5 @@ async fn scenario() {
     refused(t.k.insert(&user, "MediaAsset", obj(asset("Mine", logo_file, "Owned", json!({})))).await, "forbidden", "");
     t.act(&brand, press, "archive_asset", Value::Null).await.unwrap();
     refused(t.k.insert(&user, "AssetUsage", obj(usage(press, "Web", today))).await, "invalid", "not approved for use");
+    assert!(matches!(open(&k, tenant, &archived_link).await, Err(Error::NotFound(_))), "archived, its links give nothing");
 }

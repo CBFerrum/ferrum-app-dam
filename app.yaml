@@ -1,6 +1,6 @@
 id: dam
 name: Digital Assets
-version: 0.2.1
+version: 0.3.0
 publisher: cbferrum
 summary: "Assets kept in Drive with their rights, renditions and what their files say, approved by version, collections, and usage kept within the rights"
 description: README.md
