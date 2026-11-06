@@ -16,7 +16,7 @@
   kind: master
   module: dam
   title_field: title
-  description: A file in Drive with what may be done with it. Approved, it is the version approved that may be used, while its rights last.
+  description: A file in Drive with what may be done with it, and what the file says of itself. Approved, it is the version approved that may be used, while its rights last.
   fields:
     - {name: title, type: data, required: true, in_list: true}
     - {name: drive_file, type: link, to: DriveFile, required: true, label: File}
@@ -37,6 +37,17 @@
     - {name: approved_version, type: int, read_only: true, no_copy: true, description: "The file's version that was approved"}
     - {name: review_note, type: text, read_only: true, no_copy: true}
     - {name: usages, type: int, read_only: true, no_copy: true, in_list: true}
+    - {name: thumbnail, type: attach, read_only: true, no_copy: true, description: "A small picture of it, 320 pixels on its longest side, made from its file"}
+    - {name: preview, type: attach, read_only: true, no_copy: true, description: "A picture of it for screens, 1280 pixels on its longest side at most"}
+    - {name: width, type: int, label: Width (Pixels), read_only: true, no_copy: true}
+    - {name: height, type: int, label: Height (Pixels), read_only: true, no_copy: true}
+    - {name: taken, type: data, read_only: true, no_copy: true, in_filter: true, description: "When its file says it was taken, in the camera's own time"}
+    - {name: camera, type: data, read_only: true, no_copy: true, in_filter: true}
+    - {name: file_credit, type: data, label: Creator In The File, read_only: true, no_copy: true, in_filter: true}
+    - {name: file_copyright, type: data, label: Copyright In The File, read_only: true, no_copy: true}
+    - {name: has_location, type: check, label: Records Where It Was Taken, read_only: true, no_copy: true, in_filter: true, description: "Its file records where it was taken. The place is not kept here: remove it from the file before the file goes out"}
+    - {name: rendition_note, type: data, read_only: true, no_copy: true, description: "Why it has no renditions"}
+    - {name: renditions_of, type: data, read_only: true, no_copy: true, hidden: true, description: "The digest of the file its renditions and facts were made from"}
   actions:
     - {name: submit_asset, label: Submit for Review, permission: write, condition: "doc.status == 'Draft'"}
     - {name: approve_asset, label: Approve It, permission: write, condition: "doc.status == 'In Review'"}

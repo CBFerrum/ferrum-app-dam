@@ -3,8 +3,9 @@
 //! reset first), with Drive installed: files uploaded to Drive made assets whose type, size and
 //! digest come from the file; licences naming their licensor and days; approval by a Brand Manager
 //! of the file's version then; a new version sending the asset back for review; usages only of the
-//! approved version within its days, editorial-only assets not used to sell; expiry; and who sees
-//! and does what.
+//! approved version within its days, editorial-only assets not used to sell; expiry; renditions
+//! and what a photo's file says of it, made again for a new version and seen by whoever sees the
+//! asset; and who sees and does what.
 
 use base64::Engine;
 use chrono::{Duration, Utc};
@@ -48,6 +49,51 @@ fn png(fill: u8) -> Vec<u8> {
     let mut v = b"\x89PNG\r\n\x1a\n".to_vec();
     v.resize(600, fill);
     v
+}
+
+/// A JPEG photo `w` by `h` with the EXIF a camera writes: when it was taken, with what, by whom,
+/// under whose copyright, held on its side, and where.
+fn photo(w: u32, h: u32, shade: u8) -> Vec<u8> {
+    use exif::{Field, In, Rational, Tag, Value as Exif};
+    let ascii = |tag: Tag, text: &str| Field { tag, ifd_num: In::PRIMARY, value: Exif::Ascii(vec![text.as_bytes().to_vec()]) };
+    let whole = |n: u32| Rational { num: n, denom: 1 };
+    let fields = [
+        ascii(Tag::Make, "Canon"),
+        ascii(Tag::Model, "Canon EOS R6"),
+        ascii(Tag::Artist, "Jo Doe"),
+        ascii(Tag::Copyright, "Brand Co"),
+        ascii(Tag::DateTimeOriginal, "2026:05:01 10:30:00"),
+        Field { tag: Tag::Orientation, ifd_num: In::PRIMARY, value: Exif::Short(vec![6]) },
+        Field { tag: Tag::GPSLatitude, ifd_num: In::PRIMARY, value: Exif::Rational(vec![whole(26), whole(9), whole(0)]) },
+    ];
+    let mut writer = exif::experimental::Writer::new();
+    for f in &fields {
+        writer.push_field(f);
+    }
+    let mut tiff = std::io::Cursor::new(Vec::new());
+    writer.write(&mut tiff, false).expect("EXIF");
+    let tiff = tiff.into_inner();
+    let mut jpeg = Vec::new();
+    image::DynamicImage::ImageRgb8(image::RgbImage::from_fn(w, h, |x, y| image::Rgb([(x % 256) as u8, (y % 256) as u8, shade])))
+        .write_with_encoder(image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 80))
+        .unwrap();
+    // The EXIF goes in an APP1 segment right after the JPEG's start.
+    let mut out = vec![0xFF, 0xD8, 0xFF, 0xE1];
+    out.extend_from_slice(&u16::try_from(2 + 6 + tiff.len()).unwrap().to_be_bytes());
+    out.extend_from_slice(b"Exif\0\0");
+    out.extend_from_slice(&tiff);
+    out.extend_from_slice(&jpeg[2..]);
+    out
+}
+
+/// A stored file's id from its address.
+fn file_id(url: &Value) -> Uuid {
+    url.as_str().and_then(|u| u.strip_prefix("/files/")).unwrap_or_else(|| panic!("not a stored file: {url}")).parse().unwrap()
+}
+
+/// An image's size in pixels.
+fn pixels(bytes: &[u8]) -> (u32, u32) {
+    image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().unwrap().into_dimensions().unwrap()
 }
 
 struct T {
@@ -233,6 +279,51 @@ async fn scenario() {
     ferrum_app_dam::maintenance_on(&k, last_day + Duration::days(1)).await.unwrap();
     assert_eq!(t.status(stock).await, "Expired");
     assert_eq!(t.status(press).await, "Approved", "no last day, no expiry");
+
+    // ───────────── renditions, and what the file says ─────────────
+    let launch_file = upload("launch.jpg", photo(1600, 1200, 90)).await;
+    let mut clear = Vec::new();
+    image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(500, 500, image::Rgba([200, 30, 30, 0])))
+        .write_to(std::io::Cursor::new(&mut clear), image::ImageFormat::Png)
+        .unwrap();
+    let mark_file = upload("mark.png", clear).await;
+    let brief_file = upload("brief.pdf", b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n".to_vec()).await;
+    let launch = uid(&t.insert(&maker, "MediaAsset", asset("Launch photo", launch_file, "Owned", json!({}))).await["id"]);
+    let mark = uid(&t.insert(&maker, "MediaAsset", asset("Mark", mark_file, "Owned", json!({}))).await["id"]);
+    let brief = uid(&t.insert(&maker, "MediaAsset", asset("Brief", brief_file, "Owned", json!({}))).await["id"]);
+    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    let p = t.get("MediaAsset", launch).await;
+    assert_eq!((p["width"].as_i64(), p["height"].as_i64()), (Some(1200), Some(1600)), "turned as the camera was held");
+    assert_eq!(
+        (p["taken"].as_str(), p["camera"].as_str(), p["file_credit"].as_str(), p["file_copyright"].as_str(), p["has_location"].as_bool()),
+        (Some("2026-05-01 10:30:00"), Some("Canon EOS R6"), Some("Jo Doe"), Some("Brand Co"), Some(true)),
+        "what its file says, the place itself not kept"
+    );
+    let thumbnail = file_id(&p["thumbnail"]);
+    let (_, ctype, bytes) = t.k.read_file(&t.admin, thumbnail).await.unwrap();
+    assert_eq!((ctype.as_str(), pixels(&bytes)), ("image/jpeg", (240, 320)));
+    let (_, _, bytes) = t.k.read_file(&t.admin, file_id(&p["preview"])).await.unwrap();
+    assert_eq!(pixels(&bytes), (960, 1280));
+    let m = t.get("MediaAsset", mark).await;
+    let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&m["thumbnail"])).await.unwrap();
+    assert_eq!((ctype.as_str(), pixels(&bytes), m["has_location"].as_bool()), ("image/png", (320, 320), Some(false)), "transparency kept");
+    let b = t.get("MediaAsset", brief).await;
+    assert!(b["thumbnail"].is_null() && b["rendition_note"].as_str().is_some_and(|n| n.contains("made of images")), "{b:?}");
+    let l = t.get("MediaAsset", logo).await;
+    assert!(l["rendition_note"].as_str().is_some_and(|n| n.contains("could not be read as an image")), "{l:?}");
+    // Renditions are seen by whoever sees the asset.
+    refused(t.k.read_file(&user, thumbnail).await, "not found", "");
+    t.act(&maker, launch, "submit_asset", Value::Null).await.unwrap();
+    t.act(&brand, launch, "approve_asset", Value::Null).await.unwrap();
+    t.k.read_file(&user, thumbnail).await.expect("an approved asset's thumbnail");
+    // A new version is looked at again, and the renditions of the one before go.
+    let b64 = base64::engine::general_purpose::STANDARD.encode(photo(800, 600, 200));
+    k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": launch_file, "content_base64": b64})).await.expect("a new photo");
+    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    let again = t.get("MediaAsset", launch).await;
+    assert_eq!((again["status"].as_str(), again["width"].as_i64(), again["height"].as_i64()), (Some("In Review"), Some(600), Some(800)));
+    assert_ne!(again["thumbnail"], p["thumbnail"]);
+    refused(t.k.read_file(&t.admin, thumbnail).await, "not found", "");
 
     // ───────────── who sees and does what ─────────────
     let seen = t.k.list(&user, "MediaAsset", &ListQuery::default()).await.unwrap().rows;
