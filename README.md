@@ -21,9 +21,10 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
   the file, never typed in. A file in the trash is no asset.
 - **Renditions.** Each image gets a thumbnail (320 pixels on its longest side) and a preview
   (1280 at most), turned the way the camera was held. They are JPEG, or PNG when the image has
-  transparency, and they are seen by whoever can see the asset. An office document that carries a
-  picture of its first page (ODF always does; Word, Excel and PowerPoint when saved with one) gets
-  them from that picture. A new version gets new ones, and the old ones are removed.
+  transparency, and they are seen by whoever can see the asset. A PDF gets them from its first
+  page, drawn on white. An office document that carries a picture of its first page (ODF always
+  does; Word, Excel and PowerPoint when saved with one) gets them from that picture. A new version
+  gets new ones, and the old ones are removed.
 - **Seen whole.** Each asset opens on a page of its own: a video or a sound plays, a PDF reads and a
   picture shows, from the file as it stands, for whoever can see the asset. Only what a page shows
   by itself is answered (PDF, video, audio and pictures), never HTML or SVG, and nothing is cached.
@@ -69,6 +70,7 @@ cd ui && npm run build && npm run check
 - renditions and EXIF of a photo held on its side, a transparent mark, and a PDF without any, made
   again for a new version and seen only by those who can see the asset;
 - a PDF's XMP read for its title, creator and keywords, the keywords becoming its tags;
+- a PDF's first page drawn as its renditions, and one with no pages saying so;
 - an office document's picture of its first page made its renditions, and a video with none;
 - previews of a PDF and a video for whoever sees them, refused for a document a page does not show,
   to someone who does not see the asset, and to nobody signed in;
@@ -90,6 +92,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.7.0** | A PDF's first page drawn as its renditions. |
 | **0.6.4** | Rebuilt with Ferrum-Frontend 63280d3: right to left, pages mirror; the records pages' words in Arabic and Hindi. |
 | **0.6.3** | Rebuilt with Ferrum-Frontend a64416a: a box whose default is 1 shows ticked. |
 | **0.6.2** | Rebuilt with Ferrum-Frontend 922fcfb: action dialogs say every refusal and ask once. |
