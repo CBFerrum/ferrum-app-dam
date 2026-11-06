@@ -24,8 +24,10 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
   the old ones are removed.
 - **What the file says.** An image's size in pixels, when it was taken, the camera, and the
   creator and copyright its EXIF names are kept on the asset, and assets can be found by them.
-  Where a photo was taken is never kept: the asset only says that the file records it, so the
-  place can be removed before the file goes out.
+  Any file's XMP (photos, PDFs, office documents) and a JPEG's IPTC record give its title, caption
+  and keywords, and the creator and copyright EXIF leaves unsaid. Its keywords become its tags when
+  it has none. Where a photo was taken is never kept: the asset only says that the file records
+  it, so the place can be removed before the file goes out.
 - **Rights.** A licensed asset names its licensor and the last day it may be used. A Creative
   Commons one names whom it credits. Editorial-only assets are flagged, and releases for anyone
   recognisable are recorded.
@@ -59,12 +61,14 @@ cd ui && npm run build && npm run check
 - a new version back to review, and expiry;
 - renditions and EXIF of a photo held on its side, a transparent mark, and a PDF without any, made
   again for a new version and seen only by those who can see the asset;
+- a PDF's XMP read for its title, creator and keywords, the keywords becoming its tags;
 - who sees and does what.
 
 ## Not yet
 
 - Renditions of video, PDFs and documents, crops, and other formats on request.
-- XMP and IPTC metadata, and EXIF beyond its basics (exposure, lens).
+- EXIF beyond its basics (exposure, lens), and XMP and IPTC beyond title, caption, creator, credit,
+  copyright and keywords (locations, people shown, licensing terms).
 - Images over 40 megapixels or 50 MB get no renditions.
 - Sharing a whole collection by one link, and watermarks.
 - Usage counted from where an asset is embedded, rather than recorded.
@@ -73,6 +77,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.4.0** | Any file's XMP and a JPEG's IPTC: title, caption, keywords (its tags when it has none), and the creator and copyright EXIF leaves unsaid. |
 | **0.3.1** | Rebuilt with Ferrum-Frontend 24c3951: times on the workspace's clock; drafts headed as drafts. |
 | **0.3.0** | Approved assets shared outside by links shown once, giving the version approved while the link and the asset allow; personal data declared. |
 | **0.2.1** | Rebuilt with Ferrum-Frontend bb60115: empty numbers read as the server reads them; settings open as their record. |
