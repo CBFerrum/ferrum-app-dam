@@ -23,6 +23,8 @@ uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
 # Renditions: images read, turned and scaled, and their EXIF read.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "tiff", "bmp"] }
 kamadak-exif = "0.6"
+# A PDF's first page drawn, in pure Rust (Apache-2.0 OR MIT; its standard fonts are PDFium's, BSD-3-Clause).
+hayro = { version = "0.9", features = ["embed-fonts"] }
 # An office document's picture of its first page, from inside the document (as the platform reads zips).
 zip = { version = "9", default-features = false, features = ["deflate"] }
 tokio = { version = "1.45", features = ["rt"] }
