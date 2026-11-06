@@ -90,6 +90,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.6.3** | Rebuilt with Ferrum-Frontend a64416a: a box whose default is 1 shows ticked. |
 | **0.6.2** | Rebuilt with Ferrum-Frontend 922fcfb: action dialogs say every refusal and ask once. |
 | **0.6.1** | Rebuilt with Ferrum-Frontend a76295e: times on a person's own clock when they chose one. Today is the workspace's day, not UTC's. |
 | **0.6.0** | The place and people a file shows and its licence's terms, read from XMP and IPTC; approval waits for releases when people are named. |
