@@ -73,6 +73,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.3.1** | Rebuilt with Ferrum-Frontend 24c3951: times on the workspace's clock; drafts headed as drafts. |
 | **0.3.0** | Approved assets shared outside by links shown once, giving the version approved while the link and the asset allow; personal data declared. |
 | **0.2.1** | Rebuilt with Ferrum-Frontend bb60115: empty numbers read as the server reads them; settings open as their record. |
 | **0.2.0** | Thumbnails and previews of images, turned as the camera was held; their size, when and with what they were taken, and the creator and copyright their EXIF names. |
