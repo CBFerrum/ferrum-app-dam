@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+The people and the place a file shows, and its licence (FERRUM-ECOSYSTEM-012).
+
+- **Place Shown In The File:** from XMP's IPTC Extension Location Shown (sub-location, city,
+  province or state, country), or else IPTC Core's location fields, or a JPEG's IPTC record (92, 90,
+  95, 101). The location created, where it was taken, is never read.
+- **People Shown In The File:** from XMP's IPTC Extension Person In Image. An asset whose file names
+  people it shows is approved only once their releases are held (Releases Held).
+- **Usage Terms** and **Licence In The File:** from XMP rights (`xmpRights:UsageTerms`, and
+  `xmpRights:WebStatement` when it is a web address).
+- Read as before: as text, never run, made again for each new version.
+
 ## 0.5.0
 
 Files seen whole, and documents' first pages (FERRUM-ECOSYSTEM-012).

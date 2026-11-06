@@ -8,7 +8,7 @@
 use crate::obj;
 use async_trait::async_trait;
 use chrono::{NaiveDate, Utc};
-use ferrum_domain::util::{elevated, id, s};
+use ferrum_domain::util::{b, elevated, id, s};
 use ferrum_kernel::{Ctx, Doc, DocHook, Error, HookCtx, Kernel, Result, Tx};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -90,6 +90,10 @@ impl DocHook for AssetHook {
                     return Err(Error::Forbidden("a Brand Manager decides an asset".into()));
                 }
                 if name == "approve_asset" {
+                    // Its file names people it shows: their releases are held before it is used.
+                    if s(doc, "file_people").is_some_and(|p| !p.trim().is_empty()) && !b(doc, "people_released") {
+                        return Err(Error::invalid("its file names people it shows: hold their releases (Releases Held) before approving it"));
+                    }
                     let version = file_facts(hc.tx, hc.ctx.tenant, id(doc, "drive_file")).await?.and_then(|f| f.4);
                     json!({"status": "Approved", "approved_by": hc.ctx.email, "approved_version": version})
                 } else {

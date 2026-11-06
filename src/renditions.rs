@@ -44,6 +44,10 @@ pub(crate) struct Facts {
     pub title: Option<String>,
     pub caption: Option<String>,
     pub keywords: Vec<String>,
+    pub place: Option<String>,
+    pub people: Vec<String>,
+    pub terms: Option<String>,
+    pub licence: Option<String>,
 }
 
 /// When the file was taken, with what, by whom, under whose copyright, how the camera was held, and
@@ -58,6 +62,10 @@ pub(crate) fn facts(bytes: &[u8]) -> Facts {
         title: said.title,
         caption: said.caption,
         keywords: said.keywords,
+        place: said.place,
+        people: said.people,
+        terms: said.terms,
+        licence: said.licence,
         ..f
     }
 }
@@ -161,6 +169,7 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
     for (asset, sha, object, old_thumbnail, old_preview, size, file_type, tags) in due {
         let mut values = json!({"renditions_of": sha, "width": null, "height": null, "taken": null, "camera": null, "file_credit": null,
                                 "file_copyright": null, "file_title": null, "file_caption": null, "file_keywords": null, "has_location": false,
+                                "file_place": null, "file_people": null, "file_usage_terms": null, "file_licence": null,
                                 "thumbnail": null, "preview": null, "rendition_note": null});
         let note = |v: &mut Value, why: String| v["rendition_note"] = json!(why);
         let not_image = (file_type.as_deref() != Some("Image")).then(|| {
@@ -186,6 +195,10 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                     values["file_copyright"] = json!(f.copyright);
                     values["file_title"] = json!(f.title);
                     values["file_caption"] = json!(f.caption);
+                    values["file_place"] = json!(f.place);
+                    values["file_people"] = json!((!f.people.is_empty()).then(|| f.people.join(", ")));
+                    values["file_usage_terms"] = json!(f.terms);
+                    values["file_licence"] = json!(f.licence);
                     values["has_location"] = json!(f.located);
                     if !f.keywords.is_empty() {
                         let words = f.keywords.join(", ");
