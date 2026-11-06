@@ -7,8 +7,9 @@
 //! approved asset outside, giving the version approved while they and the asset allow; expiry; renditions
 //! and what a photo's file says of it, made again for a new version and seen by whoever sees the
 //! asset; a PDF's XMP read, its keywords becoming its tags; an office document's picture of its first
-//! page its renditions; previews of what a page shows by itself, for whoever sees the asset; and who
-//! sees and does what.
+//! page its renditions; the people and place a file shows and its licence's terms, approval waiting
+//! for releases; previews of what a page shows by itself, for whoever sees the asset; and who sees
+//! and does what.
 
 use base64::Engine;
 use chrono::{Duration, Utc};
@@ -460,6 +461,28 @@ async fn scenario() {
     assert!(d["preview"].is_string() && d["width"].is_null() && d["height"].is_null() && d["rendition_note"].is_null(), "{d:?}");
     let c = t.get("MediaAsset", clip).await;
     assert!(c["thumbnail"].is_null() && c["rendition_note"].as_str().is_some_and(|n| n.ends_with("this file is video")), "{c:?}");
+
+    // The people and the place a file shows, and its licence's terms: approved only once releases are held.
+    let said = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"><Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>Ana Rao</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage><Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Sydney</Iptc4xmpExt:City></rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown><xmpRights:UsageTerms><rdf:Alt><rdf:li xml:lang="x-default">Web only</rdf:li></rdf:Alt></xmpRights:UsageTerms></rdf:Description></rdf:RDF></x:xmpmeta>"#;
+    let mut team = b"%PDF-1.4\n1 0 obj << /Type /Metadata /Subtype /XML >> stream\n".to_vec();
+    team.extend_from_slice(said.as_bytes());
+    team.extend_from_slice(b"\nendstream endobj\ntrailer << >>\n%%EOF\n");
+    let team_file = upload("team.pdf", team).await;
+    let team = uid(&t.insert(&maker, "MediaAsset", asset("Team", team_file, "Owned", json!({}))).await["id"]);
+    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    let tm = t.get("MediaAsset", team).await;
+    assert_eq!(
+        (tm["file_people"].as_str(), tm["file_place"].as_str(), tm["file_usage_terms"].as_str()),
+        (Some("Ana Rao"), Some("Sydney"), Some("Web only")),
+        "{tm:?}"
+    );
+    t.act(&maker, team, "submit_asset", Value::Null).await.unwrap();
+    refused(t.act(&brand, team, "approve_asset", Value::Null).await, "invalid", "hold their releases");
+    t.act(&brand, team, "reject_asset", json!({"note": "Releases first"})).await.unwrap();
+    t.k.update(&maker, "MediaAsset", team, obj(json!({"people_released": true})), None).await.expect("releases held");
+    t.act(&maker, team, "submit_asset", Value::Null).await.unwrap();
+    t.act(&brand, team, "approve_asset", Value::Null).await.expect("approved once releases are held");
+    t.act(&brand, team, "archive_asset", Value::Null).await.unwrap();
 
     // ───────────── previews ─────────────
     // Whoever sees an asset sees its file in the page, for the kinds a page shows by itself.
