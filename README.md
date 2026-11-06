@@ -31,7 +31,9 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
   creator and copyright its EXIF names are kept on the asset, and assets can be found by them.
   Any file's XMP (photos, PDFs, office documents) and a JPEG's IPTC record give its title, caption
   and keywords, and the creator and copyright EXIF leaves unsaid. Its keywords become its tags when
-  it has none. Where a photo was taken is never kept: the asset only says that the file records
+  it has none. The place a file shows (IPTC's location shown), the people it shows, and its
+  licence's usage terms and web address are kept too; an asset whose file names people is approved
+  only once their releases are held. Where a photo was taken is never kept: the asset only says that the file records
   it, so the place can be removed before the file goes out.
 - **Rights.** A licensed asset names its licensor and the last day it may be used. A Creative
   Commons one names whom it credits. Editorial-only assets are flagged, and releases for anyone
@@ -77,7 +79,9 @@ cd ui && npm run build && npm run check
 - Renditions of a video's frame or a PDF's first page, which need decoders the server does not
   carry; crops, and other formats on request.
 - EXIF beyond its basics (exposure, lens), and XMP and IPTC beyond title, caption, creator, credit,
-  copyright and keywords (locations, people shown, licensing terms).
+  copyright, keywords, the place and people shown, and usage terms (PLUS licensing fields, model
+  release IDs). People shown are kept by name as the file gives them: a personal-data request by
+  e-mail does not find them.
 - Images over 40 megapixels or 50 MB get no renditions.
 - Sharing a whole collection by one link, and watermarks.
 - Usage counted from where an asset is embedded, rather than recorded.
@@ -86,6 +90,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.6.0** | The place and people a file shows and its licence's terms, read from XMP and IPTC; approval waits for releases when people are named. |
 | **0.5.0** | Each asset seen whole (video and sound played, PDFs read, pictures shown) through a preview route for whoever sees it; office documents' first pages as their renditions. |
 | **0.4.0** | Any file's XMP and a JPEG's IPTC: title, caption, keywords (its tags when it has none), and the creator and copyright EXIF leaves unsaid. |
 | **0.3.1** | Rebuilt with Ferrum-Frontend 24c3951: times on the workspace's clock; drafts headed as drafts. |
