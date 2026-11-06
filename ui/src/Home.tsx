@@ -1,5 +1,5 @@
 // The library: assets waiting for review, approved assets whose rights end within 30 days, and the
-// approved assets by collection, each with its thumbnail. Each opens its record.
+// approved assets by collection, each with its thumbnail. Each opens to be seen whole.
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -69,7 +69,7 @@ export function Home() {
               <li key={a.id} className="row" style={{ gap: 8 }}>
                 <Thumbnail asset={a} />
                 <span>
-                  <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> {a.review_note ? <span className="faint">· {String(a.review_note)}</span> : null}
+                  <Link to={`/view/${a.id}`}>{String(a.title)}</Link> {a.review_note ? <span className="faint">· {String(a.review_note)}</span> : null}
                 </span>
               </li>
             ))}
@@ -80,7 +80,7 @@ export function Home() {
           <ul className="stack">
             {soon.map((a) => (
               <li key={a.id}>
-                <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> · last day {String(a.usage_expires_on)}
+                <Link to={`/view/${a.id}`}>{String(a.title)}</Link> · last day {String(a.usage_expires_on)}
               </li>
             ))}
           </ul>
@@ -92,7 +92,7 @@ export function Home() {
               <li key={a.id} className="row" style={{ gap: 8 }}>
                 <Thumbnail asset={a} />
                 <span>
-                  <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge>{" "}
+                  <Link to={`/view/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge>{" "}
                   {a.license === "Editorial Only" ? <Badge tone="amber">Editorial only</Badge> : null}
                   {a.has_location ? <Badge tone="amber">Records where it was taken</Badge> : null}
                 </span>

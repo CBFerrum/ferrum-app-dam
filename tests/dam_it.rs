@@ -6,7 +6,9 @@
 //! approved version within its days, editorial-only assets not used to sell; links handing an
 //! approved asset outside, giving the version approved while they and the asset allow; expiry; renditions
 //! and what a photo's file says of it, made again for a new version and seen by whoever sees the
-//! asset; a PDF's XMP read, its keywords becoming its tags; and who sees and does what.
+//! asset; a PDF's XMP read, its keywords becoming its tags; an office document's picture of its first
+//! page its renditions; previews of what a page shows by itself, for whoever sees the asset; and who
+//! sees and does what.
 
 use base64::Engine;
 use chrono::{Duration, Utc};
@@ -115,6 +117,25 @@ async fn open(k: &Kernel, tenant: Uuid, link: &str) -> Result<Uuid, Error> {
     let r = site.handle(k, req).await?;
     let file = r.headers.iter().find(|(name, _)| name == ferrum_kernel::hooks::STREAM_FILE_HEADER).map(|(_, v)| v.parse().unwrap());
     Ok(file.expect("answered with the stored file"))
+}
+
+/// `GET preview/{asset}` as the platform hands it to the app for `who` (nobody: not signed in): the
+/// stored file it answers with, its type, and its headers.
+async fn preview(k: &Kernel, tenant: Uuid, who: Option<&Ctx>, asset: Uuid) -> Result<(Uuid, String, Vec<(String, String)>), Error> {
+    let site = k.hooks.site("dam").cloned().expect("the preview route");
+    let req = SiteRequest {
+        tenant,
+        user: who.cloned(),
+        method: "GET".into(),
+        path: format!("/preview/{asset}"),
+        query: Default::default(),
+        headers: Default::default(),
+        body: vec![],
+        client_ip: "203.0.113.30".into(),
+    };
+    let r = site.handle(k, req).await?;
+    let file = r.headers.iter().find(|(name, _)| name == ferrum_kernel::hooks::STREAM_FILE_HEADER).map(|(_, v)| v.parse().unwrap());
+    Ok((file.expect("answered with the stored file"), r.content_type, r.headers))
 }
 
 struct T {
@@ -414,6 +435,47 @@ async fn scenario() {
     assert_eq!((again["status"].as_str(), again["width"].as_i64(), again["height"].as_i64()), (Some("In Review"), Some(600), Some(800)));
     assert_ne!(again["thumbnail"], p["thumbnail"]);
     refused(t.k.read_file(&t.admin, thumbnail).await, "not found", "");
+    // An office document's picture of its first page makes its renditions; its size is not the picture's.
+    let mut page = Vec::new();
+    image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(400, 640, image::Rgb([240, 240, 240])))
+        .write_to(std::io::Cursor::new(&mut page), image::ImageFormat::Png)
+        .unwrap();
+    let mut odt = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let stored = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    for (name, content) in [("mimetype", &b"application/vnd.oasis.opendocument.text"[..]), ("Thumbnails/thumbnail.png", &page[..])] {
+        odt.start_file(name, stored).unwrap();
+        std::io::Write::write_all(&mut odt, content).unwrap();
+    }
+    let spec_file = upload("spec.odt", odt.finish().unwrap().into_inner()).await;
+    let spec = uid(&t.insert(&maker, "MediaAsset", asset("Spec", spec_file, "Owned", json!({}))).await["id"]);
+    // A video, as its file begins.
+    let mut mp4 = b"\0\0\0\x18ftypmp42\0\0\0\0mp42isom".to_vec();
+    mp4.resize(4096, 0);
+    let clip_file = upload("clip.mp4", mp4).await;
+    let clip = uid(&t.insert(&maker, "MediaAsset", asset("Clip", clip_file, "Owned", json!({}))).await["id"]);
+    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    let d = t.get("MediaAsset", spec).await;
+    let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&d["thumbnail"])).await.unwrap();
+    assert_eq!((ctype.as_str(), pixels(&bytes)), ("image/jpeg", (200, 320)), "{d:?}");
+    assert!(d["preview"].is_string() && d["width"].is_null() && d["height"].is_null() && d["rendition_note"].is_null(), "{d:?}");
+    let c = t.get("MediaAsset", clip).await;
+    assert!(c["thumbnail"].is_null() && c["rendition_note"].as_str().is_some_and(|n| n.ends_with("this file is video")), "{c:?}");
+
+    // ───────────── previews ─────────────
+    // Whoever sees an asset sees its file in the page, for the kinds a page shows by itself.
+    let (file, ctype, headers) = preview(&k, tenant, Some(&maker), brief).await.expect("a PDF's preview");
+    let (_, _, bytes) = t.k.read_file(&t.admin, file).await.unwrap();
+    assert!(ctype == "application/pdf" && bytes.starts_with(b"%PDF"), "{ctype}");
+    let header = |name: &str| headers.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
+    assert_eq!(
+        (header("content-disposition"), header("x-content-type-options"), header("cache-control")),
+        (Some("inline; filename=\"brief.pdf\""), Some("nosniff"), Some("private, no-store"))
+    );
+    assert_eq!(preview(&k, tenant, Some(&maker), clip).await.expect("a video's preview").1, "video/mp4");
+    refused(preview(&k, tenant, Some(&maker), spec).await, "not found", "a preview of a file of type application/vnd.oasis.opendocument.text");
+    // Not to someone who does not see the asset, nor to nobody.
+    refused(preview(&k, tenant, Some(&user), brief).await, "not found", "");
+    assert!(matches!(preview(&k, tenant, None, brief).await, Err(Error::Unauthorized(_))));
 
     // ───────────── who sees and does what ─────────────
     let seen = t.k.list(&user, "MediaAsset", &ListQuery::default()).await.unwrap().rows;

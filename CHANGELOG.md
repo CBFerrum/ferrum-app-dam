@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0
+
+Files seen whole, and documents' first pages (FERRUM-ECOSYSTEM-012).
+
+- **Seen whole.** Each asset opens on a page of its own, at `/dam/view/{asset}`: a video or a sound
+  plays, a PDF reads and a picture shows, from the file as it stands. The library's titles open it,
+  and it links to the record and what may be done with it.
+- **The preview route.** `GET /api/app/dam/preview/{asset}` answers the current version's file to
+  whoever may see the asset, read with their own rights, for the kinds a page shows by itself: PDF,
+  MP4, WebM, Ogg and QuickTime video, common audio, and PNG, JPEG, GIF, WebP and AVIF pictures.
+  Never HTML or SVG, which could run in the workspace's pages. It is shown inline, never cached,
+  and read as its type only.
+- **Documents' first pages.** An office document that carries a picture of its first page (ODF
+  always does; Word, Excel and PowerPoint files when saved with one) gets its thumbnail and preview
+  from it. Its size in pixels is not claimed: the picture is not the document.
+
 ## 0.4.0
 
 What files say of themselves beyond EXIF (FERRUM-ECOSYSTEM-012).
