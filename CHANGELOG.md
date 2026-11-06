@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+What files say of themselves beyond EXIF (FERRUM-ECOSYSTEM-012).
+
+- **XMP** from any file, whether a photo, a PDF or an office document: its title (the default
+  language's), caption, creators, credit line, copyright and keywords.
+- **IPTC** from a JPEG's Photoshop segment: the title, caption, by-line, credit, copyright notice and
+  keywords, read as UTF-8 or else Latin-1. XMP is read first, and IPTC says only what it leaves
+  unsaid.
+- The asset keeps Title, Caption and Keywords In The File. Its creator and copyright come from EXIF
+  first, then XMP or IPTC. Its keywords become its tags when it has none.
+- Every file up to 50 MB is read for this, not only images; renditions are still made of images
+  alone. Read as text and never run, with no new dependency.
+
 ## 0.3.1
 
 Rebuilt with Ferrum-Frontend 24c3951: its pages show times on the workspace's clock, naming the zone when it is not the browser's, a draft numbered on submit is headed as a draft, and a record of an app that is not installed says so.
