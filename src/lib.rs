@@ -8,12 +8,15 @@
 //! * `renditions`: a thumbnail and a preview of each image, and what its file says of it (its size,
 //!   when it was taken, the camera, the creator and copyright it names, whether it records where),
 //!   made again for each new version.
+//! * `sharing`: approved assets handed outside by links shown once, each a usage, giving the
+//!   version approved while the link and the asset allow.
 //!
 //! This app's own design; no code was copied (docs/PROVENANCE.md). Hooks are registered per entity,
 //! so a workspace without the `dam` package never runs them.
 
 mod assets;
 mod renditions;
+mod sharing;
 
 use chrono::NaiveDate;
 use ferrum_domain::reports::ReportSource;
@@ -33,9 +36,13 @@ pub fn packages() -> std::result::Result<Vec<ferrum_meta::Package>, ferrum_meta:
     ferrum_meta::catalog::load_embedded(EMBEDDED)
 }
 
-/// Registers this app's document hooks.
+/// Registers this app's document hooks, and the shared links' public route.
 pub fn register(hooks: &mut HookRegistry) {
-    hooks.register("MediaAsset", Arc::new(assets::AssetHook)).register("AssetUsage", Arc::new(assets::UsageHook));
+    hooks
+        .register("MediaAsset", Arc::new(assets::AssetHook))
+        .register("AssetUsage", Arc::new(assets::UsageHook))
+        .register("AssetShare", Arc::new(assets::ShareHook));
+    hooks.add_site("dam", Arc::new(sharing::DamSite));
 }
 
 /// This app's reports: none of its own yet.
