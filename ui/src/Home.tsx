@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, docPath, fetchBlob } from "@ferrum/client";
+import { api, docPath, fetchBlob, todayIso } from "@ferrum/client";
 import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -54,7 +54,7 @@ export function Home() {
   });
   if (q.isPending) return <PageLoading />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  const soon = ending(q.data.approved, new Date().toISOString().slice(0, 10));
+  const soon = ending(q.data.approved, todayIso());
   return (
     <div className="np-page">
       <header className="row" style={{ justifyContent: "space-between" }}>
