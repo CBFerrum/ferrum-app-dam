@@ -53,6 +53,11 @@
     - {name: approve_asset, label: Approve It, permission: write, condition: "doc.status == 'In Review'"}
     - {name: reject_asset, label: Send It Back, permission: write, condition: "doc.status == 'In Review'", params: [{name: note, type: text, label: Why, required: true}]}
     - {name: archive_asset, label: Archive It, permission: write, condition: "doc.status != 'Archived'"}
+    - {name: share_asset, label: Share It Outside, permission: write, condition: "doc.status == 'Approved'",
+       params: [{name: recipient, type: data, label: For, required: true, description: "Who the link is for: a newspaper, a printer, an agency"},
+                {name: channel, type: select, options: [Web, Social, Print, Advertising, Email, Internal], label: Used For, required: true},
+                {name: expires_on, type: date, label: Works Until, required: true},
+                {name: max_downloads, type: int, label: Downloads Allowed, description: "20 when empty"}]}
   list: {columns: [title, kind, collection, license, usage_expires_on, status, usages], sort: created_at desc}
 
 - name: AssetUsage
@@ -69,3 +74,25 @@
     - {name: placement, type: data, in_list: true, description: "The page, campaign or piece it went into"}
     - {name: used_by, type: email, read_only: true, no_copy: true, in_list: true}
   list: {columns: [asset, channel, used_on, placement, used_by], sort: used_on desc}
+
+- name: AssetShare
+  label: Shared Link
+  label_plural: Shared Links
+  kind: master
+  module: dam
+  title_field: recipient
+  description: An approved asset handed outside the workspace by a link, shown once when it is made. It works until its day, for its downloads, and while the asset stays approved; it gives the version approved.
+  fields:
+    - {name: asset, type: link, to: MediaAsset, required: true, read_only: true, in_list: true, in_filter: true}
+    - {name: recipient, type: data, required: true, read_only: true, in_list: true, label: For}
+    - {name: channel, type: select, options: [Web, Social, Print, Advertising, Email, Internal], read_only: true, in_list: true, label: Used For}
+    - {name: expires_on, type: date, required: true, read_only: true, in_list: true, label: Works Until}
+    - {name: max_downloads, type: int, read_only: true, label: Downloads Allowed}
+    - {name: downloads, type: int, read_only: true, no_copy: true, in_list: true}
+    - {name: last_downloaded_at, type: datetime, read_only: true, no_copy: true}
+    - {name: shared_by, type: email, read_only: true, no_copy: true, in_list: true}
+    - {name: revoked, type: check, read_only: true, no_copy: true, in_list: true, in_filter: true, label: Stopped}
+    - {name: token_hash, type: data, read_only: true, no_copy: true, hidden: true}
+  actions:
+    - {name: revoke_share, label: Stop It, permission: write, condition: "!doc.revoked"}
+  list: {columns: [asset, recipient, expires_on, downloads, revoked], sort: created_at desc}

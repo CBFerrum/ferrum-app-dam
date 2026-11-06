@@ -35,6 +35,13 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
 - **Usage within the rights.** A usage is of an approved asset, of the version approved, on a day
   no later than its last. An editorial-only asset is not used to sell (advertising or social).
 - **Expiry.** Past its last day, an approved asset expires.
+- **Shared outside.** A Brand Manager shares an approved asset with someone (a newspaper, a printer,
+  an agency) for a use within its rights, until a day no later than its last, for a number of
+  downloads (20 unless set). The link is shown once; only a digest of it is kept, and the share is
+  recorded as a use. Opened by anyone holding it, it gives the version approved, as the stored file.
+  It works only while the link is not stopped, its day has not passed and its downloads last, and
+  while the asset stays approved with that version. Otherwise it answers as an unknown link does.
+- **Personal data.** Requests reach who keeps a collection, approves, uses and shares an asset.
 - **Who sees what.** Media Users see approved assets only, and their own usages.
 
 ## Develop
@@ -59,13 +66,14 @@ cd ui && npm run build && npm run check
 - Renditions of video, PDFs and documents, crops, and other formats on request.
 - XMP and IPTC metadata, and EXIF beyond its basics (exposure, lens).
 - Images over 40 megapixels or 50 MB get no renditions.
-- Sharing a collection outside the workspace, with watermarks.
+- Sharing a whole collection by one link, and watermarks.
 - Usage counted from where an asset is embedded, rather than recorded.
 
 ## Changelog
 
 | Version | Highlights |
 |---|---|
+| **0.3.0** | Approved assets shared outside by links shown once, giving the version approved while the link and the asset allow; personal data declared. |
 | **0.2.1** | Rebuilt with Ferrum-Frontend bb60115: empty numbers read as the server reads them; settings open as their record. |
 | **0.2.0** | Thumbnails and previews of images, turned as the camera was held; their size, when and with what they were taken, and the creator and copyright their EXIF names. |
 | **0.1.4** | Rebuilt with Ferrum-Frontend 00dea07: a workflow state's kept fields are read-only, its needed ones required. |
