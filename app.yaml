@@ -1,8 +1,8 @@
 id: dam
 name: Digital Assets
-version: 0.1.4
+version: 0.2.0
 publisher: cbferrum
-summary: "Assets kept in Drive with their rights, approved by version, collections, and usage kept within the rights"
+summary: "Assets kept in Drive with their rights, renditions and what their files say, approved by version, collections, and usage kept within the rights"
 description: README.md
 categories: [marketing, productivity]
 license: AGPL-3.0-only
@@ -14,7 +14,7 @@ platform: ">=0.3.2, <0.4"
 requires: {drive: ">=0.12"}
 packages: [dam]
 uninstall: ask
-# Its own interface at /dam/: assets waiting for approval, rights ending, and the library.
+# Its own interface at /dam/: assets waiting for approval, rights ending, and the library, with thumbnails.
 ui:
   dist: ui/dist
 contributes:

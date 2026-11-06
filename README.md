@@ -2,6 +2,7 @@
 
 Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Drive:
 - assets kept as Drive files, with what may be done with them;
+- thumbnails and previews of images, and what their files say of them;
 - approval by a Brand Manager, of the file's version then;
 - collections, and usage recorded within the rights.
 
@@ -17,6 +18,14 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
 
 - **From Drive.** An asset is a file in Drive. Its type, content type, size and digest are read from
   the file, never typed in. A file in the trash is no asset.
+- **Renditions.** Each image gets a thumbnail (320 pixels on its longest side) and a preview
+  (1280 at most), turned the way the camera was held. They are JPEG, or PNG when the image has
+  transparency, and they are seen by whoever can see the asset. A new version gets new ones, and
+  the old ones are removed.
+- **What the file says.** An image's size in pixels, when it was taken, the camera, and the
+  creator and copyright its EXIF names are kept on the asset, and assets can be found by them.
+  Where a photo was taken is never kept: the asset only says that the file records it, so the
+  place can be removed before the file goes out.
 - **Rights.** A licensed asset names its licensor and the last day it may be used. A Creative
   Commons one names whom it credits. Editorial-only assets are flagged, and releases for anyone
   recognisable are recorded.
@@ -41,12 +50,15 @@ cd ui && npm run build && npm run check
 - review, a rejection, and approval;
 - usages within and outside the rights;
 - a new version back to review, and expiry;
+- renditions and EXIF of a photo held on its side, a transparent mark, and a PDF without any, made
+  again for a new version and seen only by those who can see the asset;
 - who sees and does what.
 
 ## Not yet
 
-- Renditions (thumbnails, crops, other formats), and previews beyond Drive's.
-- Metadata read from inside the file (EXIF, XMP), and finding by it.
+- Renditions of video, PDFs and documents, crops, and other formats on request.
+- XMP and IPTC metadata, and EXIF beyond its basics (exposure, lens).
+- Images over 40 megapixels or 50 MB get no renditions.
 - Sharing a collection outside the workspace, with watermarks.
 - Usage counted from where an asset is embedded, rather than recorded.
 
@@ -54,6 +66,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.2.0** | Thumbnails and previews of images, turned as the camera was held; their size, when and with what they were taken, and the creator and copyright their EXIF names. |
 | **0.1.4** | Rebuilt with Ferrum-Frontend 00dea07: a workflow state's kept fields are read-only, its needed ones required. |
 | **0.1.3** | Rebuilt with Ferrum-Frontend daeadda: actions say what they did. |
 | **0.1.2** | Rebuilt with Ferrum-Frontend 80ff179: labels name their fields, and linked titles show their titles. |

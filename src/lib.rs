@@ -5,11 +5,15 @@
 //!   days; approval by a Brand Manager of the file's version then; a new version back to review;
 //!   expiry; usages only of the approved version, within its days, and editorial-only assets not
 //!   used to sell.
+//! * `renditions`: a thumbnail and a preview of each image, and what its file says of it (its size,
+//!   when it was taken, the camera, the creator and copyright it names, whether it records where),
+//!   made again for each new version.
 //!
 //! This app's own design; no code was copied (docs/PROVENANCE.md). Hooks are registered per entity,
 //! so a workspace without the `dam` package never runs them.
 
 mod assets;
+mod renditions;
 
 use chrono::NaiveDate;
 use ferrum_domain::reports::ReportSource;
@@ -39,7 +43,8 @@ pub fn reports() -> Vec<Arc<dyn ReportSource>> {
     vec![]
 }
 
-/// Upkeep: approved assets expired, or back to review when their file has changed.
+/// Upkeep: approved assets expired, or back to review when their file has changed; and renditions
+/// of the assets whose file changed, a few each round.
 pub async fn maintenance(k: &Kernel) -> Result<()> {
     maintenance_on(k, assets::today()).await
 }
@@ -60,6 +65,7 @@ pub async fn maintenance_on(k: &Kernel, today: NaiveDate) -> Result<()> {
             let mut tx = k.db.tenant_tx(tenant).await?;
             assets::upkeep(k, &ctx, &mut tx, today).await?;
             tx.commit().await?;
+            renditions::round(k, &ctx).await?;
             Ok::<(), Error>(())
         };
         if let Err(e) = run.await {

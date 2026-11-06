@@ -17,6 +17,10 @@ rust_decimal = { version = "1.43", features = ["serde-with-str", "maths"] }
 serde_json = "1"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "uuid", "chrono", "rust_decimal", "json", "migrate", "macros"] }
 uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
+# Renditions: images read, turned and scaled, and their EXIF read.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "tiff", "bmp"] }
+kamadak-exif = "0.6"
+tokio = { version = "1.45", features = ["rt"] }
 
 [dev-dependencies]
 # Its tests keep their files in Drive, and check that its interface is a release the platform takes.
