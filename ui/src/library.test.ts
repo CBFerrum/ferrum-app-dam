@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ending, storedUrl } from "./Home";
+import { player, previewUrl } from "./View";
 
 describe("the library", () => {
   it("lists rights ending within the window, soonest first", () => {
@@ -23,5 +24,16 @@ describe("thumbnails", () => {
     expect(storedUrl("https://elsewhere.test/x.png")).toBeNull();
     expect(storedUrl("/files/../api/x")).toBeNull();
     expect(storedUrl(null)).toBeNull();
+  });
+});
+
+describe("an asset seen whole", () => {
+  it("is played, read or shown only for the kinds the preview route answers", () => {
+    expect(player("video/mp4")).toBe("video");
+    expect(player("Audio/MPEG; charset=binary")).toBe("audio");
+    expect(player("application/pdf")).toBe("pdf");
+    expect(player("image/webp")).toBe("image");
+    for (const t of ["text/html", "image/svg+xml", "application/zip", "", null]) expect(player(t)).toBeNull();
+    expect(previewUrl("a/b")).toBe("/api/app/dam/preview/a%2Fb");
   });
 });

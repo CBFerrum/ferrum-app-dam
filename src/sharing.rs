@@ -87,6 +87,7 @@ impl Site for DamSite {
         let segs: Vec<&str> = req.path.split('/').filter(|p| !p.is_empty()).collect();
         match (req.method.as_str(), segs.as_slice()) {
             ("GET", ["s", token]) => open(k, req.tenant, token).await,
+            ("GET", ["preview", asset]) => crate::preview::preview(k, &req, asset).await,
             _ => Err(Error::NotFound(format!("dam endpoint {} {}", req.method, req.path))),
         }
     }
