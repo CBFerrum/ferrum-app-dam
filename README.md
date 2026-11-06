@@ -2,7 +2,8 @@
 
 Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Drive:
 - assets kept as Drive files, with what may be done with them;
-- thumbnails and previews of images, and what their files say of them;
+- thumbnails and previews of images and of documents' first pages, and what their files say of them;
+- each asset seen whole: its video or sound played, its PDF read, its picture shown;
 - approval by a Brand Manager, of the file's version then;
 - collections, and usage recorded within the rights.
 
@@ -10,7 +11,7 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
 |---|---|
 | 🖼️ App | `dam`, native, in the server |
 | 🧩 Package | `dam` (needs Drive) |
-| 🖥️ Interface | its own, at `/dam/`: assets waiting for review, rights ending soon, and the approved library |
+| 🖥️ Interface | its own, at `/dam/`: assets waiting for review, rights ending soon, the approved library, and each asset seen whole |
 | 🔐 Roles | Brand Manager, Media Contributor, Media User |
 | 📜 Licence | AGPL-3.0-only |
 
@@ -20,8 +21,12 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
   the file, never typed in. A file in the trash is no asset.
 - **Renditions.** Each image gets a thumbnail (320 pixels on its longest side) and a preview
   (1280 at most), turned the way the camera was held. They are JPEG, or PNG when the image has
-  transparency, and they are seen by whoever can see the asset. A new version gets new ones, and
-  the old ones are removed.
+  transparency, and they are seen by whoever can see the asset. An office document that carries a
+  picture of its first page (ODF always does; Word, Excel and PowerPoint when saved with one) gets
+  them from that picture. A new version gets new ones, and the old ones are removed.
+- **Seen whole.** Each asset opens on a page of its own: a video or a sound plays, a PDF reads and a
+  picture shows, from the file as it stands, for whoever can see the asset. Only what a page shows
+  by itself is answered (PDF, video, audio and pictures), never HTML or SVG, and nothing is cached.
 - **What the file says.** An image's size in pixels, when it was taken, the camera, and the
   creator and copyright its EXIF names are kept on the asset, and assets can be found by them.
   Any file's XMP (photos, PDFs, office documents) and a JPEG's IPTC record give its title, caption
@@ -62,11 +67,15 @@ cd ui && npm run build && npm run check
 - renditions and EXIF of a photo held on its side, a transparent mark, and a PDF without any, made
   again for a new version and seen only by those who can see the asset;
 - a PDF's XMP read for its title, creator and keywords, the keywords becoming its tags;
+- an office document's picture of its first page made its renditions, and a video with none;
+- previews of a PDF and a video for whoever sees them, refused for a document a page does not show,
+  to someone who does not see the asset, and to nobody signed in;
 - who sees and does what.
 
 ## Not yet
 
-- Renditions of video, PDFs and documents, crops, and other formats on request.
+- Renditions of a video's frame or a PDF's first page, which need decoders the server does not
+  carry; crops, and other formats on request.
 - EXIF beyond its basics (exposure, lens), and XMP and IPTC beyond title, caption, creator, credit,
   copyright and keywords (locations, people shown, licensing terms).
 - Images over 40 megapixels or 50 MB get no renditions.
@@ -77,6 +86,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.5.0** | Each asset seen whole (video and sound played, PDFs read, pictures shown) through a preview route for whoever sees it; office documents' first pages as their renditions. |
 | **0.4.0** | Any file's XMP and a JPEG's IPTC: title, caption, keywords (its tags when it has none), and the creator and copyright EXIF leaves unsaid. |
 | **0.3.1** | Rebuilt with Ferrum-Frontend 24c3951: times on the workspace's clock; drafts headed as drafts. |
 | **0.3.0** | Approved assets shared outside by links shown once, giving the version approved while the link and the asset allow; personal data declared. |

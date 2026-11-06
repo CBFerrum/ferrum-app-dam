@@ -9,7 +9,8 @@
 //! * any file's XMP, and a JPEG's IPTC, give its title, caption and keywords, and the creator and
 //!   copyright EXIF leaves unsaid (`embedded`); its keywords become its tags when it has none.
 //!
-//! Files that are not images, images over 40 megapixels or 50 MB, and files that cannot be read as
+//! An office document's renditions are made of the picture of its first page it carries, when it
+//! carries one. Other files, images over 40 megapixels or 50 MB, and files that cannot be read as
 //! images keep a note saying why they have no renditions. A new version is looked at again, and the
 //! renditions of the one before are removed.
 
@@ -163,7 +164,10 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                                 "thumbnail": null, "preview": null, "rendition_note": null});
         let note = |v: &mut Value, why: String| v["rendition_note"] = json!(why);
         let not_image = (file_type.as_deref() != Some("Image")).then(|| {
-            format!("Renditions are made of images; this file is {}", file_type.as_deref().map(str::to_lowercase).unwrap_or_else(|| "of no known kind".into()))
+            format!(
+                "Renditions are made of images, and of documents that carry a picture of their first page; this file is {}",
+                file_type.as_deref().map(str::to_lowercase).unwrap_or_else(|| "of no known kind".into())
+            )
         });
         // Any file is read for what it says of itself; only an image is rendered.
         match object.as_deref().and_then(|o| o.parse::<Uuid>().ok()) {
@@ -193,9 +197,16 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                     }
                     let orientation = f.orientation;
                     // Decoding and scaling hold a thread: not the one answering requests.
-                    let made = match not_image {
-                        Some(why) => Err(why),
-                        None => tokio::task::spawn_blocking(move || render(&bytes, orientation))
+                    // A document's picture of its first page, when it carries one.
+                    let picture = not_image.as_ref().and_then(|_| crate::preview::embedded_thumbnail(&bytes));
+                    let image = not_image.is_none();
+                    let made = match (not_image, picture) {
+                        (Some(_), Some(picture)) => tokio::task::spawn_blocking(move || render(&picture, None))
+                            .await
+                            .map_err(|e| Error::internal(e.to_string()))?
+                            .map_err(|why| format!("Its picture of its first page {why}")),
+                        (Some(why), None) => Err(why),
+                        (None, _) => tokio::task::spawn_blocking(move || render(&bytes, orientation))
                             .await
                             .map_err(|e| Error::internal(e.to_string()))?
                             .map_err(|why| format!("It {why}")),
@@ -207,8 +218,11 @@ pub(crate) async fn round(k: &Kernel, ctx: &Ctx) -> Result<usize> {
                             let on = Some(("MediaAsset", asset));
                             let thumbnail = k.store_file(ctx, on, &format!("thumbnail.{ext}"), ctype, &r.thumbnail).await?;
                             let preview = k.store_file(ctx, on, &format!("preview.{ext}"), ctype, &r.preview).await?;
-                            values["width"] = json!(r.width);
-                            values["height"] = json!(r.height);
+                            // A document's picture says nothing of the document's size.
+                            if image {
+                                values["width"] = json!(r.width);
+                                values["height"] = json!(r.height);
+                            }
                             values["thumbnail"] = thumbnail["url"].clone();
                             values["preview"] = preview["url"].clone();
                         }

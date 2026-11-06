@@ -16,6 +16,7 @@
 
 mod assets;
 mod embedded;
+mod preview;
 mod renditions;
 mod sharing;
 
