@@ -1,9 +1,10 @@
 // The library: assets waiting for review, approved assets whose rights end within 30 days, and the
-// approved assets by collection. Each opens its record.
+// approved assets by collection, each with its thumbnail. Each opens its record.
 
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, docPath } from "@ferrum/client";
+import { api, docPath, fetchBlob } from "@ferrum/client";
 import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -20,6 +21,26 @@ export function ending(list: Row[], today: string, days = 30): Row[] {
   return list
     .filter((a) => typeof a.usage_expires_on === "string" && a.usage_expires_on >= today && a.usage_expires_on <= last)
     .sort((a, b) => String(a.usage_expires_on).localeCompare(String(b.usage_expires_on)));
+}
+
+/** A stored file's address (`/files/{id}`), or nothing. */
+export function storedUrl(v: unknown): string | null {
+  return typeof v === "string" && /^\/files\/[0-9a-f-]{36}$/i.test(v) ? v : null;
+}
+
+/** An asset's thumbnail, read with the person's own rights (it is seen by whoever sees the asset). */
+function Thumbnail({ asset }: { asset: Row }) {
+  const url = storedUrl(asset.thumbnail);
+  const blob = useQuery({ queryKey: ["dam", "thumbnail", url], enabled: !!url, staleTime: Infinity, queryFn: ({ signal }) => fetchBlob(url!, signal) });
+  const [src, setSrc] = useState<string>();
+  useEffect(() => {
+    if (!blob.data) return;
+    const u = URL.createObjectURL(blob.data);
+    setSrc(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob.data]);
+  if (!url) return null;
+  return src ? <img src={src} alt="" width={48} height={48} style={{ objectFit: "cover", borderRadius: 4, verticalAlign: "middle" }} /> : <span style={{ display: "inline-block", width: 48 }} />;
 }
 
 export function Home() {
@@ -45,8 +66,11 @@ export function Home() {
           <h3>Waiting for review ({q.data.review.length})</h3>
           <ul className="stack">
             {q.data.review.map((a) => (
-              <li key={a.id}>
-                <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> {a.review_note ? <span className="faint">· {String(a.review_note)}</span> : null}
+              <li key={a.id} className="row" style={{ gap: 8 }}>
+                <Thumbnail asset={a} />
+                <span>
+                  <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> {a.review_note ? <span className="faint">· {String(a.review_note)}</span> : null}
+                </span>
               </li>
             ))}
           </ul>
@@ -65,8 +89,13 @@ export function Home() {
           <h3>Approved ({q.data.approved.length})</h3>
           <ul className="stack">
             {q.data.approved.map((a) => (
-              <li key={a.id}>
-                <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge> {a.license === "Editorial Only" ? <Badge tone="amber">Editorial only</Badge> : null}
+              <li key={a.id} className="row" style={{ gap: 8 }}>
+                <Thumbnail asset={a} />
+                <span>
+                  <Link to={`/e/MediaAsset/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge>{" "}
+                  {a.license === "Editorial Only" ? <Badge tone="amber">Editorial only</Badge> : null}
+                  {a.has_location ? <Badge tone="amber">Records where it was taken</Badge> : null}
+                </span>
               </li>
             ))}
           </ul>
