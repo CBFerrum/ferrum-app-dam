@@ -94,6 +94,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.8.2** | Rebuilt with Ferrum-Frontend 6537d65: once-shown answers kept; English isolated right to left; its own words translatable by a workspace. |
 | **0.8.1** | Rebuilt with Ferrum-Frontend d5d98f2: a workspace's own interface words; pictures in attachment fields; a duplicate value said so. |
 | **0.8.0** | A shared link's watermark drawn across the pictures it hands out. |
 | **0.7.0** | A PDF's first page drawn as its renditions. |
