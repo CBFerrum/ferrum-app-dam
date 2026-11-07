@@ -1,6 +1,6 @@
 id: dam
 name: Digital Assets
-version: 0.8.3
+version: 0.8.4
 publisher: cbferrum
 summary: "Assets kept in Drive with their rights, renditions and what their files say, seen whole, approved by version, collections, and usage kept within the rights"
 description: README.md
@@ -30,3 +30,16 @@ contributes:
     - {id: dam, package: dam, path: "dam/e/{entity}/{id}", list: "dam/e/{entity}"}
   shell.create:
     - {id: asset, label: Asset, path: dam/e/MediaAsset/new, entity: MediaAsset}
+  # What the assistant should know in Digital Assets's pages, and what it suggests asking there.
+  shell.assistant:
+    - id: dam
+      title: "Digital Assets"
+      instructions: >-
+        A MediaAsset is a file kept in Drive with its rights: Draft, In Review, Approved, Expired or Archived. Only an
+        approved version may be used, and only within its rights (where, and until when); one whose rights have ended
+        is Expired. AssetUsage records where an asset is used, collections group assets, and an AssetShare is a link
+        given outside.
+      suggestions:
+        - "Whose rights expire this month?"
+        - "Which assets are waiting for review?"
+        - "Where is this asset used?"
