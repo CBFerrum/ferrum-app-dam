@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, docPath, fetchBlob, todayIso, t } from "@ferrum/client";
+import { api, docPath, fetchBlob, todayIso, t, isolate } from "@ferrum/client";
 import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -44,7 +44,7 @@ function Thumbnail({ asset }: { asset: Row }) {
 }
 
 export function Home() {
-  useShellTitle("Digital Assets");
+  useShellTitle(t("Digital Assets"));
   const q = useQuery({
     queryKey: ["dam", "library"],
     queryFn: async () => {
@@ -69,7 +69,7 @@ export function Home() {
               <li key={a.id} className="row" style={{ gap: 8 }}>
                 <Thumbnail asset={a} />
                 <span>
-                  <Link to={`/view/${a.id}`}>{String(a.title)}</Link> {a.review_note ? <span className="faint">· {String(a.review_note)}</span> : null}
+                  <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> {a.review_note ? <span className="faint">· {isolate(String(a.review_note))}</span> : null}
                 </span>
               </li>
             ))}
@@ -80,7 +80,7 @@ export function Home() {
           <ul className="stack">
             {soon.map((a) => (
               <li key={a.id}>
-                <Link to={`/view/${a.id}`}>{String(a.title)}</Link> {t("· last day")} {String(a.usage_expires_on)}
+                <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> {t("· last day")} {isolate(String(a.usage_expires_on))}
               </li>
             ))}
           </ul>
@@ -92,7 +92,7 @@ export function Home() {
               <li key={a.id} className="row" style={{ gap: 8 }}>
                 <Thumbnail asset={a} />
                 <span>
-                  <Link to={`/view/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge>{" "}
+                  <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> <Badge tone="neutral">{isolate(String(a.kind ?? ""))}</Badge>{isolate(" ")}
                   {a.license === "Editorial Only" ? <Badge tone="amber">{t("Editorial only")}</Badge> : null}
                   {a.has_location ? <Badge tone="amber">{t("Records where it was taken")}</Badge> : null}
                 </span>
