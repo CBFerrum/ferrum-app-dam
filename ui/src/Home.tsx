@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, docPath, fetchBlob, todayIso } from "@ferrum/client";
+import { api, docPath, fetchBlob, todayIso, t } from "@ferrum/client";
 import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -58,12 +58,12 @@ export function Home() {
   return (
     <div className="np-page">
       <header className="row" style={{ justifyContent: "space-between" }}>
-        <h2>The library</h2>
-        <Link to="/e/MediaAsset/new">New asset</Link>
+        <h2>{t("The library")}</h2>
+        <Link to="/e/MediaAsset/new">{t("New asset")}</Link>
       </header>
       <div className="np-columns">
-        <section className="card card-pad stack" aria-label="Waiting for review">
-          <h3>Waiting for review ({q.data.review.length})</h3>
+        <section className="card card-pad stack" aria-label={t("Waiting for review")}>
+          <h3>{t("Waiting for review ({length})", { length: q.data.review.length })}</h3>
           <ul className="stack">
             {q.data.review.map((a) => (
               <li key={a.id} className="row" style={{ gap: 8 }}>
@@ -75,26 +75,26 @@ export function Home() {
             ))}
           </ul>
         </section>
-        <section className="card card-pad stack" aria-label="Rights ending">
-          <h3>Rights ending in 30 days ({soon.length})</h3>
+        <section className="card card-pad stack" aria-label={t("Rights ending")}>
+          <h3>{t("Rights ending in 30 days ({length})", { length: soon.length })}</h3>
           <ul className="stack">
             {soon.map((a) => (
               <li key={a.id}>
-                <Link to={`/view/${a.id}`}>{String(a.title)}</Link> · last day {String(a.usage_expires_on)}
+                <Link to={`/view/${a.id}`}>{String(a.title)}</Link> {t("· last day")} {String(a.usage_expires_on)}
               </li>
             ))}
           </ul>
         </section>
-        <section className="card card-pad stack" aria-label="Approved">
-          <h3>Approved ({q.data.approved.length})</h3>
+        <section className="card card-pad stack" aria-label={t("Approved")}>
+          <h3>{t("Approved ({length})", { length: q.data.approved.length })}</h3>
           <ul className="stack">
             {q.data.approved.map((a) => (
               <li key={a.id} className="row" style={{ gap: 8 }}>
                 <Thumbnail asset={a} />
                 <span>
                   <Link to={`/view/${a.id}`}>{String(a.title)}</Link> <Badge tone="neutral">{String(a.kind ?? "")}</Badge>{" "}
-                  {a.license === "Editorial Only" ? <Badge tone="amber">Editorial only</Badge> : null}
-                  {a.has_location ? <Badge tone="amber">Records where it was taken</Badge> : null}
+                  {a.license === "Editorial Only" ? <Badge tone="amber">{t("Editorial only")}</Badge> : null}
+                  {a.has_location ? <Badge tone="amber">{t("Records where it was taken")}</Badge> : null}
                 </span>
               </li>
             ))}

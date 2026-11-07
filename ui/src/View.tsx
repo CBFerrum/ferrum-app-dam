@@ -4,7 +4,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { api, docPath } from "@ferrum/client";
+import { api, docPath, t as tr } from "@ferrum/client";
 import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
 import type { Row } from "./Home";
 
@@ -52,14 +52,14 @@ export function View() {
         <h2>
           {title} <Badge tone="neutral">{String(a.status ?? "")}</Badge>
         </h2>
-        <Link to={`/e/MediaAsset/${a.id}`}>Open the record</Link>
+        <Link to={`/e/MediaAsset/${a.id}`}>{tr("Open the record")}</Link>
       </header>
-      <section className="card card-pad stack" aria-label="The file">
+      <section className="card card-pad stack" aria-label={tr("The file")}>
         {how === "video" ? <video controls preload="metadata" src={src} style={{ maxWidth: "100%", maxHeight: "75vh" }} /> : null}
         {how === "audio" ? <audio controls preload="metadata" src={src} /> : null}
         {how === "pdf" ? <iframe title={title} src={src} style={{ width: "100%", height: "75vh", border: 0 }} /> : null}
         {how === "image" ? <img src={src} alt={title} style={{ maxWidth: "100%", maxHeight: "75vh", objectFit: "contain" }} /> : null}
-        {how ? null : <p className="faint">A page does not show a file of type {String(a.content_type || "unknown")} by itself: open the record to download it.</p>}
+        {how ? null : <p className="faint">{tr("A page does not show a file of type")} {String(a.content_type || "unknown")} {tr("by itself: open the record to download it.")}</p>}
       </section>
       <p className="faint">
         {[a.kind, a.license, a.usage_expires_on ? `last day ${String(a.usage_expires_on)}` : null, a.width && a.height ? `${String(a.width)} × ${String(a.height)}` : null]
