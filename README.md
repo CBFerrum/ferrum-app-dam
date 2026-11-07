@@ -94,6 +94,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.8.1** | Rebuilt with Ferrum-Frontend d5d98f2: a workspace's own interface words; pictures in attachment fields; a duplicate value said so. |
 | **0.8.0** | A shared link's watermark drawn across the pictures it hands out. |
 | **0.7.0** | A PDF's first page drawn as its renditions. |
 | **0.6.4** | Rebuilt with Ferrum-Frontend 63280d3: right to left, pages mirror; the records pages' words in Arabic and Hindi. |
