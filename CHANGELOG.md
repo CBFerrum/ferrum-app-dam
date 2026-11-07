@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0
+
+A shared link may carry a watermark: words drawn across a picture it downloads, such as Preview or
+the name it is for (Share It Outside → Watermark, 60 letters at most). They are white with a dark
+edge, partly see-through, repeated on a slant over the whole picture, set in Helvetica by hayro
+(already here for PDFs' first pages). A picture shared so never goes out unmarked: one that cannot
+be read is refused. It is turned the way the camera was held first, and its EXIF goes no further,
+where it was taken among it. Other files go as they are; letters outside Latin-1 show as `?`.
+
 ## 0.7.0
 
 A PDF's renditions are its first page. The page is drawn on white with hayro, a PDF rasterizer in
