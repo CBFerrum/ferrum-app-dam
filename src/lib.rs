@@ -19,6 +19,7 @@ mod embedded;
 mod preview;
 mod renditions;
 mod sharing;
+mod watermark;
 
 use chrono::NaiveDate;
 use ferrum_domain::reports::ReportSource;

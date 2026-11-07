@@ -120,6 +120,24 @@ async fn open(k: &Kernel, tenant: Uuid, link: &str) -> Result<Uuid, Error> {
     Ok(file.expect("answered with the stored file"))
 }
 
+/// A shared link opened by anyone, its answer whole: for a picture it marks, no stored file but the
+/// marked picture itself.
+async fn open_whole(k: &Kernel, tenant: Uuid, link: &str) -> Result<ferrum_kernel::SiteResponse, Error> {
+    let token = link.rsplit('/').next().unwrap_or_default();
+    let site = k.hooks.site("dam").cloned().expect("the shared links' route");
+    let req = SiteRequest {
+        tenant,
+        user: None,
+        method: "GET".into(),
+        path: format!("/s/{token}"),
+        query: Default::default(),
+        headers: Default::default(),
+        body: vec![],
+        client_ip: "203.0.113.20".into(),
+    };
+    site.handle(k, req).await
+}
+
 /// `GET preview/{asset}` as the platform hands it to the app for `who` (nobody: not signed in): the
 /// stored file it answers with, its type, and its headers.
 async fn preview(k: &Kernel, tenant: Uuid, who: Option<&Ctx>, asset: Uuid) -> Result<(Uuid, String, Vec<(String, String)>), Error> {
@@ -429,6 +447,29 @@ async fn scenario() {
     t.act(&maker, launch, "submit_asset", Value::Null).await.unwrap();
     t.act(&brand, launch, "approve_asset", Value::Null).await.unwrap();
     t.k.read_file(&user, thumbnail).await.expect("an approved asset's thumbnail");
+    // With a watermark: the picture goes out marked, never as it is, its size kept.
+    let marked = t
+        .act(
+            &brand,
+            launch,
+            "share_asset",
+            json!({"recipient": "Agency", "channel": "Web", "expires_on": (today + Duration::days(3)).to_string(), "watermark": "PREVIEW"}),
+        )
+        .await
+        .unwrap()["link"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let r = open_whole(&k, tenant, &marked).await.expect("a marked picture");
+    assert!(r.headers.iter().all(|(name, _)| name != ferrum_kernel::hooks::STREAM_FILE_HEADER), "not the stored file");
+    assert_eq!((r.content_type.as_str(), pixels(&r.body)), ("image/jpeg", (1200, 1600)), "turned as the camera held it, then marked");
+    assert!(r.headers.iter().any(|(name, v)| name == "content-disposition" && v.ends_with(".jpg\"")), "{:?}", r.headers);
+    refused(
+        t.act(&brand, launch, "share_asset", json!({"recipient": "Agency", "channel": "Web", "expires_on": today.to_string(), "watermark": "x".repeat(61)}))
+            .await,
+        "invalid",
+        "60 letters at most",
+    );
     // A new version is looked at again, and the renditions of the one before go.
     let b64 = base64::engine::general_purpose::STANDARD.encode(photo(800, 600, 200));
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": launch_file, "content_base64": b64})).await.expect("a new photo");
