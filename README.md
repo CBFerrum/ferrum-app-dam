@@ -51,6 +51,8 @@ Digital asset management for [Ferrum](https://github.com/CBFerrum/Ferrum), on Dr
   recorded as a use. Opened by anyone holding it, it gives the version approved, as the stored file.
   It works only while the link is not stopped, its day has not passed and its downloads last, and
   while the asset stays approved with that version. Otherwise it answers as an unknown link does.
+  A link may carry a watermark: its words drawn across a picture it gives, on a slant over the
+  whole of it; such a picture never goes out unmarked.
 - **Personal data.** Requests reach who keeps a collection, approves, uses and shares an asset.
 - **Who sees what.** Media Users see approved assets only, and their own usages.
 
@@ -85,13 +87,14 @@ cd ui && npm run build && npm run check
   release IDs). People shown are kept by name as the file gives them: a personal-data request by
   e-mail does not find them.
 - Images over 40 megapixels or 50 MB get no renditions.
-- Sharing a whole collection by one link, and watermarks.
+- Sharing a whole collection by one link, and a watermark on anything but a picture.
 - Usage counted from where an asset is embedded, rather than recorded.
 
 ## Changelog
 
 | Version | Highlights |
 |---|---|
+| **0.8.0** | A shared link's watermark drawn across the pictures it hands out. |
 | **0.7.0** | A PDF's first page drawn as its renditions. |
 | **0.6.4** | Rebuilt with Ferrum-Frontend 63280d3: right to left, pages mirror; the records pages' words in Arabic and Hindi. |
 | **0.6.3** | Rebuilt with Ferrum-Frontend a64416a: a box whose default is 1 shows ticked. |

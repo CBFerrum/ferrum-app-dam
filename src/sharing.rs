@@ -47,6 +47,10 @@ pub(crate) async fn share(hc: &mut HookCtx<'_>, doc: &Doc, params: &Value) -> Re
     if !(1..=MOST_DOWNLOADS).contains(&downloads) {
         return Err(Error::field("max_downloads", format!("is from 1 to {MOST_DOWNLOADS}")));
     }
+    let watermark = params.get("watermark").and_then(Value::as_str).map(str::trim).filter(|w| !w.is_empty());
+    if watermark.is_some_and(|w| w.chars().count() > 60) {
+        return Err(Error::field("watermark", "is 60 letters at most"));
+    }
     if s(doc, "usage_expires_on").and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()).is_some_and(|last| until > last) {
         return Err(Error::field("expires_on", "is after the last day the asset may be used"));
     }
@@ -67,7 +71,7 @@ pub(crate) async fn share(hc: &mut HookCtx<'_>, doc: &Doc, params: &Value) -> Re
             hc.tx,
             "AssetShare",
             obj(json!({"asset": asset.to_string(), "recipient": recipient, "channel": channel, "expires_on": until.to_string(), "max_downloads": downloads,
-                       "downloads": 0, "shared_by": hc.ctx.email.to_lowercase(), "revoked": false, "token_hash": digest(&token)})),
+                       "downloads": 0, "shared_by": hc.ctx.email.to_lowercase(), "revoked": false, "token_hash": digest(&token), "watermark": watermark})),
         )
         .await?;
     let slug: String = sqlx::query_scalar("select slug from tenant where id = $1").bind(hc.ctx.tenant).fetch_one(&mut **hc.tx).await?;
@@ -100,8 +104,8 @@ async fn open(k: &Kernel, tenant: Uuid, token: &str) -> Result<SiteResponse> {
     let today = ctx.today();
     let mut tx = k.db.tenant_tx(tenant).await?;
     // Held while it is counted: two at once never pass its downloads.
-    let share: Option<(Uuid, Uuid)> = sqlx::query_as(
-        "select id, asset from e_asset_share where tenant_id = $1 and token_hash = $2 and not coalesce(revoked, false) and expires_on >= $3 \
+    let share: Option<(Uuid, Uuid, Option<String>)> = sqlx::query_as(
+        "select id, asset, watermark from e_asset_share where tenant_id = $1 and token_hash = $2 and not coalesce(revoked, false) and expires_on >= $3 \
          and coalesce(downloads, 0) < coalesce(max_downloads, $4) for update",
     )
     .bind(tenant)
@@ -110,7 +114,7 @@ async fn open(k: &Kernel, tenant: Uuid, token: &str) -> Result<SiteResponse> {
     .bind(DOWNLOADS)
     .fetch_optional(&mut *tx)
     .await?;
-    let (share, asset) = share.ok_or_else(gone)?;
+    let (share, asset, watermark) = share.ok_or_else(gone)?;
     // The asset still approved, within its days, its file still the version approved.
     let approved: Option<(Option<String>, Option<Uuid>, Option<i64>, Option<i64>, Option<chrono::NaiveDate>)> = sqlx::query_as(
         "select a.status, a.drive_file, a.approved_version, f.version_no, a.usage_expires_on from e_media_asset a \
@@ -141,12 +145,27 @@ async fn open(k: &Kernel, tenant: Uuid, token: &str) -> Result<SiteResponse> {
     tx.commit().await?;
     let info = k.file_info(&ctx, object).await?;
     let name: String = info.name.chars().filter(|c| !c.is_control() && *c != '"' && *c != '\\').collect();
-    let headers = vec![
-        ("content-disposition".to_string(), format!("attachment; filename=\"{name}\"")),
-        ("cache-control".to_string(), "no-store".to_string()),
-        ("x-robots-tag".to_string(), "noindex".to_string()),
-    ];
-    Ok(SiteResponse::file(200, &info.content_type, headers, object))
+    let headers = |name: &str| {
+        vec![
+            ("content-disposition".to_string(), format!("attachment; filename=\"{name}\"")),
+            ("cache-control".to_string(), "no-store".to_string()),
+            ("x-robots-tag".to_string(), "noindex".to_string()),
+        ]
+    };
+    // A picture shared with a watermark goes out marked, never as it is; other files as they are.
+    if let Some(words) = watermark.filter(|w| !w.trim().is_empty())
+        && info.content_type.starts_with("image/")
+    {
+        let (_, _, bytes) = k.read_file(&ctx, object).await?;
+        let (body, ctype) = tokio::task::spawn_blocking(move || crate::watermark::watermarked(&bytes, &words))
+            .await
+            .map_err(|e| Error::internal(e.to_string()))?
+            .map_err(|why| Error::invalid(format!("The picture {why}")))?;
+        let stem = name.rsplit_once('.').map_or(name.as_str(), |(stem, _)| stem);
+        let ext = if ctype == "image/png" { "png" } else { "jpg" };
+        return Ok(SiteResponse { status: 200, content_type: ctype.to_string(), headers: headers(&format!("{stem}.{ext}")), body });
+    }
+    Ok(SiteResponse::file(200, &info.content_type, headers(&name), object))
 }
 
 /// `revoke_share`: the link stops working.
