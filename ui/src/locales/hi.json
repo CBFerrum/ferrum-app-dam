@@ -1,5 +1,5 @@
 {
-  "A page does not show a file of type": "पेज इस प्रकार की फ़ाइल नहीं दिखाता",
+  "A page does not show a file of type {p1} by itself: open the record to download it.": "पेज {p1} प्रकार की फ़ाइल स्वयं नहीं दिखाता: डाउनलोड करने के लिए रिकॉर्ड खोलें।",
   "Approved": "स्वीकृत",
   "Approved ({length})": "स्वीकृत ({length})",
   "Asset": "परिसंपत्ति",
@@ -15,6 +15,6 @@
   "The library": "लाइब्रेरी",
   "Waiting for review": "समीक्षा की प्रतीक्षा में",
   "Waiting for review ({length})": "समीक्षा की प्रतीक्षा में ({length})",
-  "by itself: open the record to download it.": "अपने-आप: डाउनलोड करने के लिए रिकॉर्ड खोलें।",
+  "last day {usage_expires_on}": "अंतिम दिन {usage_expires_on}",
   "· last day": "· आखिरी दिन"
 }
