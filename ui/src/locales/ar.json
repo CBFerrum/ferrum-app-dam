@@ -1,5 +1,5 @@
 {
-  "A page does not show a file of type": "لا تعرض الصفحة ملفًا من نوع",
+  "A page does not show a file of type {p1} by itself: open the record to download it.": "لا تعرض الصفحة ملفًا من نوع {p1} بنفسها: افتح السجل لتنزيله.",
   "Approved": "معتمد",
   "Approved ({length})": "معتمد ({length})",
   "Asset": "الأصل",
@@ -15,6 +15,6 @@
   "The library": "المكتبة",
   "Waiting for review": "بانتظار المراجعة",
   "Waiting for review ({length})": "بانتظار المراجعة ({length})",
-  "by itself: open the record to download it.": "بمفرده: افتح السجل لتنزيله.",
+  "last day {usage_expires_on}": "آخر يوم {usage_expires_on}",
   "· last day": "· آخر يوم"
 }

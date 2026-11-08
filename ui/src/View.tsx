@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { api, docPath, t as tr, isolate } from "@ferrum/client";
-import { Badge, ErrorState, PageLoading, useShellTitle } from "@ferrum/kit";
+import { Badge, ErrorState, PageLoading, useShellTitle, placed } from "@ferrum/kit";
 import type { Row } from "./Home";
 
 const shown: Record<string, "video" | "audio" | "pdf" | "image"> = {
@@ -59,10 +59,10 @@ export function View() {
         {how === "audio" ? <audio controls preload="metadata" src={src} /> : null}
         {how === "pdf" ? <iframe title={title} src={src} style={{ width: "100%", height: "75vh", border: 0 }} /> : null}
         {how === "image" ? <img src={src} alt={title} style={{ maxWidth: "100%", maxHeight: "75vh", objectFit: "contain" }} /> : null}
-        {how ? null : <p className="faint">{tr("A page does not show a file of type")} {isolate(String(a.content_type || "unknown"))} {tr("by itself: open the record to download it.")}</p>}
+        {how ? null : <p className="faint">{placed(tr("A page does not show a file of type {p1} by itself: open the record to download it."), { p1: isolate(String(a.content_type || "unknown")) })}</p>}
       </section>
       <p className="faint">
-        {isolate([a.kind, a.license, a.usage_expires_on ? `last day ${String(a.usage_expires_on)}` : null, a.width && a.height ? `${String(a.width)} × ${String(a.height)}` : null]
+        {isolate([a.kind, a.license, a.usage_expires_on ? tr("last day {usage_expires_on}", { usage_expires_on: String(a.usage_expires_on) }) : null, a.width && a.height ? `${String(a.width)} × ${String(a.height)}` : null]
           .filter(Boolean)
           .join(" · "))}
       </p>
