@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.7
+
+People shown in a file come up in personal-data requests by name (Ferrum's closure review, FEO-016). A media asset's People Shown In The File (from its XMP) is declared as a name field, so a request that gives a person's name lists the files showing them under "possibly theirs", for a person to judge: a name alone never erases anything. Needs Ferrum 937a494 or later, which matches a name within a list.
+
 ## 0.8.6
 
 Rebuilt with Ferrum-Frontend c59c9a2: the names of its models, fields and manifest in Arabic and Hindi (123 each in ui/src/locales/names, which the platform serves to every page of the workspace, so a record's labels, the launcher and the bar read in the person's language), and the sentences its pages still showed in English (split around a link or a figure, built in code from a template or word by word) whole and translated (18 words each in ui/src/locales). Translated by the model, to be reviewed by native speakers.

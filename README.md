@@ -85,7 +85,8 @@ cd ui && npm run build && npm run check
 - EXIF beyond its basics (exposure, lens), and XMP and IPTC beyond title, caption, creator, credit,
   copyright, keywords, the place and people shown, and usage terms (PLUS licensing fields, model
   release IDs). People shown are kept by name as the file gives them: a personal-data request by
-  e-mail does not find them.
+  e-mail does not find them, and one that gives their name lists the files showing them as possibly
+  theirs, for a person to judge.
 - Images over 40 megapixels or 50 MB get no renditions.
 - Sharing a whole collection by one link, and a watermark on anything but a picture.
 - Usage counted from where an asset is embedded, rather than recorded.
@@ -94,6 +95,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.8.7** | A personal-data request by name lists the files showing that person as possibly theirs. |
 | **0.8.6** | Its names in Arabic and Hindi; the last English sentences translated. |
 | **0.8.5** | Sentences built in code are words too, in Arabic and Hindi. |
 | **0.8.4** | The assistant knows its records. |
