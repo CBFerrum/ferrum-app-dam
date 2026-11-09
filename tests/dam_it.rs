@@ -514,7 +514,7 @@ async fn scenario() {
     assert!(fl["width"].is_null() && fl["rendition_note"].is_null(), "a page's picture says nothing of the file's size: {fl:?}");
 
     // The people and the place a file shows, and its licence's terms: approved only once releases are held.
-    let said = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"><Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>Ana Rao</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage><Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Sydney</Iptc4xmpExt:City></rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown><xmpRights:UsageTerms><rdf:Alt><rdf:li xml:lang="x-default">Web only</rdf:li></rdf:Alt></xmpRights:UsageTerms></rdf:Description></rdf:RDF></x:xmpmeta>"#;
+    let said = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"><Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>Ana Rao</rdf:li><rdf:li>Pat Lee</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage><Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Sydney</Iptc4xmpExt:City></rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown><xmpRights:UsageTerms><rdf:Alt><rdf:li xml:lang="x-default">Web only</rdf:li></rdf:Alt></xmpRights:UsageTerms></rdf:Description></rdf:RDF></x:xmpmeta>"#;
     let mut team = b"%PDF-1.4\n1 0 obj << /Type /Metadata /Subtype /XML >> stream\n".to_vec();
     team.extend_from_slice(said.as_bytes());
     team.extend_from_slice(b"\nendstream endobj\ntrailer << >>\n%%EOF\n");
@@ -524,9 +524,14 @@ async fn scenario() {
     let tm = t.get("MediaAsset", team).await;
     assert_eq!(
         (tm["file_people"].as_str(), tm["file_place"].as_str(), tm["file_usage_terms"].as_str()),
-        (Some("Ana Rao"), Some("Sydney"), Some("Web only")),
+        (Some("Ana Rao, Pat Lee"), Some("Sydney"), Some("Web only")),
         "{tm:?}"
     );
+    // Someone shown in a file comes up by their name in a personal-data request, as possibly theirs,
+    // for a person to judge: a name alone never erases anything (FEO-016).
+    let person = ferrum_kernel::privacy::Person { email: "pat.lee@example.test".into(), name: Some("pat  lee".into()), ..Default::default() };
+    let asked = t.k.personal_data_of(&t.admin, &person).await.unwrap();
+    assert!(asked["possibly"].as_array().unwrap().iter().any(|p| p["entity"] == json!("MediaAsset") && p["id"] == json!(team)), "{asked}");
     t.act(&maker, team, "submit_asset", Value::Null).await.unwrap();
     refused(t.act(&brand, team, "approve_asset", Value::Null).await, "invalid", "hold their releases");
     t.act(&brand, team, "reject_asset", json!({"note": "Releases first"})).await.unwrap();

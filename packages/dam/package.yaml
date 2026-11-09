@@ -37,6 +37,6 @@ roles:
 # approves an asset, uses one and shares one. Erasure takes the address off; the records stay.
 personal_data:
   - {entity: AssetCollection, match: owner, erase: [owner]}
-  - {entity: MediaAsset, match: approved_by, erase: [approved_by]}
+  - {entity: MediaAsset, match: approved_by, name: file_people, erase: [approved_by]}
   - {entity: AssetUsage, match: used_by, erase: [used_by]}
   - {entity: AssetShare, match: shared_by, erase: [shared_by]}
