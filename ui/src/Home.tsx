@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api, docPath, fetchBlob, formatValue, todayIso, t, isolate } from "@ferrum/client";
-import { Badge, ButtonLink, HomeSkeleton, LoadFailed, PageHead, PageStack, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
+import { ButtonLink, HomeSkeleton, LoadFailed, PageHead, PageStack, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
   id: string;
@@ -99,12 +99,12 @@ export function Home() {
               key={a.id}
               to={`/view/${a.id}`}
               title={isolate(String(a.title))}
-              meta={isolate(String(a.kind ?? ""))}
               lead={<Thumbnail asset={a} />}
-              trailing={
+              meta={
                 <>
-                  {a.license === "Editorial Only" ? <Badge tone="amber">{t("Editorial only")}</Badge> : null}
-                  {a.has_location ? <Badge tone="amber">{t("Records where it was taken")}</Badge> : null}
+                  {isolate(String(a.kind ?? ""))}
+                  {a.license === "Editorial Only" ? <span className="text-warning"> · {t("Editorial only")}</span> : null}
+                  {a.has_location ? <span className="text-warning"> · {t("Records where it was taken")}</span> : null}
                 </>
               }
             />
