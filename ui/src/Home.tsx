@@ -2,10 +2,9 @@
 // approved assets by collection, each with its thumbnail. Each opens to be seen whole.
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { api, docPath, fetchBlob, todayIso, t, isolate } from "@ferrum/client";
-import { Badge, ErrorState, ListSkeleton, useShellTitle } from "@ferrum/kit";
+import { type ReactNode, useEffect, useState } from "react";
+import { api, docPath, fetchBlob, formatValue, todayIso, t, isolate } from "@ferrum/client";
+import { Badge, ButtonLink, HomeSkeleton, LoadFailed, PageHead, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
   id: string;
@@ -28,6 +27,12 @@ export function storedUrl(v: unknown): string | null {
   return typeof v === "string" && /^\/files\/[0-9a-f-]{36}$/i.test(v) ? v : null;
 }
 
+/** The queues show this many rows each; the rest is "and N more", linking to the list. */
+const LIMIT = 5;
+
+/** A day as the person reads it ("20 Nov 2026"); empty when there is none. */
+const day = (v: unknown) => formatValue({ type: "date" }, v);
+
 /** An asset's thumbnail, read with the person's own rights (it is seen by whoever sees the asset). */
 function Thumbnail({ asset }: { asset: Row }) {
   const url = storedUrl(asset.thumbnail);
@@ -40,7 +45,7 @@ function Thumbnail({ asset }: { asset: Row }) {
     return () => URL.revokeObjectURL(u);
   }, [blob.data]);
   if (!url) return null;
-  return src ? <img src={src} alt="" width={48} height={48} style={{ objectFit: "cover", borderRadius: 4, verticalAlign: "middle" }} /> : <span style={{ display: "inline-block", width: 48 }} />;
+  return src ? <img src={src} alt="" width={48} height={48} className="size-12 rounded-sm object-cover" /> : <span className="size-12 rounded-sm bg-muted" />;
 }
 
 export function Home() {
@@ -52,55 +57,66 @@ export function Home() {
       return { review, approved };
     },
   });
-  if (q.isPending) return <ListSkeleton className="np-page" />;
-  if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  const soon = ending(q.data.approved, todayIso());
+  const create = (
+    <ButtonLink to="/e/MediaAsset/new" variant="primary" icon="plus">
+      {t("New asset")}
+    </ButtonLink>
+  );
+  if (q.isPending) return (
+    <>
+      <PageHead title={t("The library")} />
+      <HomeSkeleton queues={3} />
+    </>
+  );
+  if (q.isError) return (
+    <>
+      <PageHead title={t("The library")} actions={create} />
+      <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
+    </>
+  );
+  const { review, approved } = q.data;
+  const soon = ending(approved, todayIso());
+  // A thumbnail stays with the row's end, before its marks; a row without one shows only its marks.
+  const end = (a: Row, marks?: ReactNode) => (
+    <>
+      {marks}
+      <Thumbnail asset={a} />
+    </>
+  );
   return (
-    <div className="np-page">
-      <header className="row" style={{ justifyContent: "space-between" }}>
-        <h2>{t("The library")}</h2>
-        <Link to="/e/MediaAsset/new">{t("New asset")}</Link>
-      </header>
-      <div className="np-columns">
-        <section className="card card-pad stack" aria-label={t("Waiting for review")}>
-          <h3>{t("Waiting for review ({length})", { length: q.data.review.length })}</h3>
-          <ul className="stack">
-            {q.data.review.map((a) => (
-              <li key={a.id} className="row" style={{ gap: 8 }}>
-                <Thumbnail asset={a} />
-                <span>
-                  <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> {a.review_note ? <span className="faint">· {isolate(String(a.review_note))}</span> : null}
-                </span>
-              </li>
+    <>
+      <PageHead title={t("The library")} description={review.length + soon.length > 0 ? t("{review} waiting for review · {ending} rights ending soon", { review: review.length, ending: soon.length }) : undefined} actions={create} />
+      <QueueGrid>
+        {soon.length > 0 && (
+          <Queue title={t("Rights ending in 30 days")} count={soon.length} tone="attention" more={{ to: "/e/MediaAsset", count: soon.length - LIMIT }}>
+            {soon.slice(0, LIMIT).map((a) => (
+              <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={t("last day {usage_expires_on}", { usage_expires_on: day(a.usage_expires_on) })} trailing={end(a)} />
             ))}
-          </ul>
-        </section>
-        <section className="card card-pad stack" aria-label={t("Rights ending")}>
-          <h3>{t("Rights ending in 30 days ({length})", { length: soon.length })}</h3>
-          <ul className="stack">
-            {soon.map((a) => (
-              <li key={a.id}>
-                <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> {t("· last day")} {isolate(String(a.usage_expires_on))}
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="card card-pad stack" aria-label={t("Approved")}>
-          <h3>{t("Approved ({length})", { length: q.data.approved.length })}</h3>
-          <ul className="stack">
-            {q.data.approved.map((a) => (
-              <li key={a.id} className="row" style={{ gap: 8 }}>
-                <Thumbnail asset={a} />
-                <span>
-                  <Link to={`/view/${a.id}`}>{isolate(String(a.title))}</Link> <Badge tone="neutral">{isolate(String(a.kind ?? ""))}</Badge>{isolate(" ")}
+          </Queue>
+        )}
+        <Queue title={t("Waiting for review")} count={review.length} more={{ to: "/e/MediaAsset", count: review.length - LIMIT }}>
+          {review.slice(0, LIMIT).map((a) => (
+            <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={a.review_note ? isolate(String(a.review_note)) : undefined} trailing={end(a)} />
+          ))}
+        </Queue>
+        <Queue title={t("Approved")} count={approved.length} more={{ to: "/e/MediaAsset", count: approved.length - LIMIT }}>
+          {approved.slice(0, LIMIT).map((a) => (
+            <QueueItem
+              key={a.id}
+              to={`/view/${a.id}`}
+              title={isolate(String(a.title))}
+              meta={isolate(String(a.kind ?? ""))}
+              trailing={end(
+                a,
+                <>
                   {a.license === "Editorial Only" ? <Badge tone="amber">{t("Editorial only")}</Badge> : null}
                   {a.has_location ? <Badge tone="amber">{t("Records where it was taken")}</Badge> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </div>
+                </>,
+              )}
+            />
+          ))}
+        </Queue>
+      </QueueGrid>
+    </>
   );
 }
