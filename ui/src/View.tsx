@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { api, docPath, t as tr, isolate } from "@ferrum/client";
-import { Badge, ErrorState, PageLoading, useShellTitle, placed } from "@ferrum/kit";
+import { Badge, ErrorState, ListSkeleton, useShellTitle, placed } from "@ferrum/kit";
 import type { Row } from "./Home";
 
 const shown: Record<string, "video" | "audio" | "pdf" | "image"> = {
@@ -40,7 +40,7 @@ export function View() {
   const { id = "" } = useParams();
   const q = useQuery({ queryKey: ["dam", "asset", id], queryFn: () => api.get<Row>(docPath("MediaAsset", id)) });
   useShellTitle(q.data ? String(q.data.title) : tr("Asset"));
-  if (q.isPending) return <PageLoading />;
+  if (q.isPending) return <ListSkeleton className="np-page" />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   const a = q.data;
   const title = String(a.title);
