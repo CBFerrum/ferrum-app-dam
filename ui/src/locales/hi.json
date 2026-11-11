@@ -13,5 +13,6 @@
   "The library": "लाइब्रेरी",
   "Waiting for review": "समीक्षा की प्रतीक्षा में",
   "last day {usage_expires_on}": "अंतिम दिन {usage_expires_on}",
-  "{review} waiting for review · {ending} rights ending soon": "{review} समीक्षा की प्रतीक्षा में · {ending} अधिकार जल्द समाप्त"
+  "{n} rights ending soon": "{n} अधिकार जल्द समाप्त",
+  "{n} waiting for review": "{n} समीक्षा की प्रतीक्षा में"
 }

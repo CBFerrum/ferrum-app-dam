@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { api, docPath, t as tr, isolate } from "@ferrum/client";
-import { ButtonLink, LoadFailed, PageHead, ReaderSkeleton, StatusBadge, placed } from "@ferrum/kit";
+import { ButtonLink, LoadFailed, PageHead, PageStack, ReaderSkeleton, StatusBadge, placed } from "@ferrum/kit";
 import type { Row } from "./Home";
 
 const shown: Record<string, "video" | "audio" | "pdf" | "image"> = {
@@ -41,16 +41,16 @@ export function View() {
   const q = useQuery({ queryKey: ["dam", "asset", id], queryFn: () => api.get<Row>(docPath("MediaAsset", id)) });
   const back = { to: "/", label: tr("The library") };
   if (q.isPending) return (
-    <>
+    <PageStack>
       <PageHead title={tr("Asset")} back={back} />
       <ReaderSkeleton />
-    </>
+    </PageStack>
   );
   if (q.isError) return (
-    <>
+    <PageStack>
       <PageHead title={tr("Asset")} back={back} />
       <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
-    </>
+    </PageStack>
   );
   const a = q.data;
   const title = String(a.title);
@@ -58,7 +58,7 @@ export function View() {
   const src = previewUrl(a.id);
   const facts = [a.kind, a.license, a.usage_expires_on ? tr("last day {usage_expires_on}", { usage_expires_on: String(a.usage_expires_on) }) : null, a.width && a.height ? `${String(a.width)} × ${String(a.height)}` : null].filter(Boolean).join(" · ");
   return (
-    <>
+    <PageStack>
       <PageHead
         title={isolate(title)}
         back={back}
@@ -77,6 +77,6 @@ export function View() {
         {how === "image" ? <img src={src} alt={title} className="mx-auto max-h-[75vh] max-w-full object-contain" /> : null}
         {how ? null : <p className="muted">{placed(tr("A page does not show a file of type {p1} by itself: open the record to download it."), { p1: isolate(String(a.content_type || "unknown")) })}</p>}
       </section>
-    </>
+    </PageStack>
   );
 }
