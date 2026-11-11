@@ -13,5 +13,6 @@
   "The library": "المكتبة",
   "Waiting for review": "بانتظار المراجعة",
   "last day {usage_expires_on}": "آخر يوم {usage_expires_on}",
-  "{review} waiting for review · {ending} rights ending soon": "{review} بانتظار المراجعة · {ending} حقوق تنتهي قريبًا"
+  "{n} rights ending soon": "{n} حقوق تنتهي قريبًا",
+  "{n} waiting for review": "{n} بانتظار المراجعة"
 }

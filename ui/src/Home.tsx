@@ -2,9 +2,9 @@
 // approved assets by collection, each with its thumbnail. Each opens to be seen whole.
 
 import { useQuery } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, docPath, fetchBlob, formatValue, todayIso, t, isolate } from "@ferrum/client";
-import { Badge, ButtonLink, HomeSkeleton, LoadFailed, PageHead, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
+import { Badge, ButtonLink, HomeSkeleton, LoadFailed, PageHead, PageStack, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
   id: string;
@@ -45,7 +45,7 @@ function Thumbnail({ asset }: { asset: Row }) {
     return () => URL.revokeObjectURL(u);
   }, [blob.data]);
   if (!url) return null;
-  return src ? <img src={src} alt="" width={48} height={48} className="size-12 rounded-sm object-cover" /> : <span className="size-12 rounded-sm bg-muted" />;
+  return src ? <img src={src} alt="" /> : <span aria-hidden="true" />;
 }
 
 export function Home() {
@@ -63,40 +63,34 @@ export function Home() {
     </ButtonLink>
   );
   if (q.isPending) return (
-    <>
+    <PageStack>
       <PageHead title={t("The library")} />
       <HomeSkeleton queues={3} />
-    </>
+    </PageStack>
   );
   if (q.isError) return (
-    <>
+    <PageStack>
       <PageHead title={t("The library")} actions={create} />
       <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
-    </>
+    </PageStack>
   );
   const { review, approved } = q.data;
   const soon = ending(approved, todayIso());
-  // A thumbnail stays with the row's end, before its marks; a row without one shows only its marks.
-  const end = (a: Row, marks?: ReactNode) => (
-    <>
-      {marks}
-      <Thumbnail asset={a} />
-    </>
-  );
+  const summary = [review.length && t("{n} waiting for review", { n: review.length }), soon.length && t("{n} rights ending soon", { n: soon.length })].filter(Boolean).join(" · ");
   return (
-    <>
-      <PageHead title={t("The library")} description={review.length + soon.length > 0 ? t("{review} waiting for review · {ending} rights ending soon", { review: review.length, ending: soon.length }) : undefined} actions={create} />
+    <PageStack>
+      <PageHead title={t("The library")} description={summary ? isolate(summary) : undefined} actions={create} />
       <QueueGrid>
         {soon.length > 0 && (
           <Queue title={t("Rights ending in 30 days")} count={soon.length} tone="attention" more={{ to: "/e/MediaAsset", count: soon.length - LIMIT }}>
             {soon.slice(0, LIMIT).map((a) => (
-              <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={t("last day {usage_expires_on}", { usage_expires_on: day(a.usage_expires_on) })} trailing={end(a)} />
+              <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={t("last day {usage_expires_on}", { usage_expires_on: day(a.usage_expires_on) })} lead={<Thumbnail asset={a} />} />
             ))}
           </Queue>
         )}
         <Queue title={t("Waiting for review")} count={review.length} more={{ to: "/e/MediaAsset", count: review.length - LIMIT }}>
           {review.slice(0, LIMIT).map((a) => (
-            <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={a.review_note ? isolate(String(a.review_note)) : undefined} trailing={end(a)} />
+            <QueueItem key={a.id} to={`/view/${a.id}`} title={isolate(String(a.title))} meta={a.review_note ? isolate(String(a.review_note)) : undefined} lead={<Thumbnail asset={a} />} />
           ))}
         </Queue>
         <Queue title={t("Approved")} count={approved.length} more={{ to: "/e/MediaAsset", count: approved.length - LIMIT }}>
@@ -106,17 +100,17 @@ export function Home() {
               to={`/view/${a.id}`}
               title={isolate(String(a.title))}
               meta={isolate(String(a.kind ?? ""))}
-              trailing={end(
-                a,
+              lead={<Thumbnail asset={a} />}
+              trailing={
                 <>
                   {a.license === "Editorial Only" ? <Badge tone="amber">{t("Editorial only")}</Badge> : null}
                   {a.has_location ? <Badge tone="amber">{t("Records where it was taken")}</Badge> : null}
-                </>,
-              )}
+                </>
+              }
             />
           ))}
         </Queue>
       </QueueGrid>
-    </>
+    </PageStack>
   );
 }
