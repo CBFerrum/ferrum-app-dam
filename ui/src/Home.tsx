@@ -2,6 +2,7 @@
 // approved assets by collection, each with its thumbnail. Each opens to be seen whole.
 
 import { useQuery } from "@tanstack/react-query";
+import { File } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, docPath, fetchBlob, formatValue, todayIso, t, isolate } from "@ferrum/client";
 import { ButtonLink, HomeSkeleton, LoadFailed, PageHead, PageStack, Queue, QueueGrid, QueueItem, useShellTitle } from "@ferrum/kit";
@@ -38,14 +39,17 @@ function Thumbnail({ asset }: { asset: Row }) {
   const url = storedUrl(asset.thumbnail);
   const blob = useQuery({ queryKey: ["dam", "thumbnail", url], enabled: !!url, staleTime: Infinity, queryFn: ({ signal }) => fetchBlob(url!, signal) });
   const [src, setSrc] = useState<string>();
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (!blob.data) return;
     const u = URL.createObjectURL(blob.data);
     setSrc(u);
     return () => URL.revokeObjectURL(u);
   }, [blob.data]);
-  if (!url) return null;
-  return src ? <img src={src} alt="" /> : <span aria-hidden="true" />;
+  // The same 40px square whether the picture is there, loading, failed or never made.
+  const box = "inline-flex size-10 items-center justify-center overflow-hidden rounded-sm border border-border bg-surface-2 text-muted-foreground";
+  if (src && !failed) return <img src={src} alt="" onError={() => setFailed(true)} className="size-10 rounded-sm border border-border bg-surface-2 object-cover" />;
+  return <span aria-hidden="true" className={box}>{url && !failed && !blob.isError ? null : <File className="size-5" />}</span>;
 }
 
 export function Home() {
