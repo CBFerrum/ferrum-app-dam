@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.8
+
+The interface follows the upgraded design system, rebuilt with Ferrum-Frontend 0a47157. Text uses the kit's type roles (nothing under 12px) and controls its height tokens; loading shows skeletons shaped like what is coming; empty, no matches, denied, offline and failed are told apart; status colours come from stored state ids. The interface check now runs the UI lint against an empty baseline. The home is rebuilt on the kit's work-home pattern: one page title, the main action as a button, queues with their counts, status at its natural width; its other own pages follow the same anatomy.
+
 ## 0.8.7
 
 People shown in a file come up in personal-data requests by name (Ferrum's closure review, FEO-016). A media asset's People Shown In The File (from its XMP) is declared as a name field, so a request that gives a person's name lists the files showing them under "possibly theirs", for a person to judge: a name alone never erases anything. Needs Ferrum 937a494 or later, which matches a name within a list.
