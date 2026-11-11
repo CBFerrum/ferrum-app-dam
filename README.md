@@ -95,6 +95,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.8.8** | The redesigned interface: the upgraded design system, shaped loading, told-apart states. |
 | **0.8.7** | A personal-data request by name lists the files showing that person as possibly theirs. |
 | **0.8.6** | Its names in Arabic and Hindi; the last English sentences translated. |
 | **0.8.5** | Sentences built in code are words too, in Arabic and Hindi. |
