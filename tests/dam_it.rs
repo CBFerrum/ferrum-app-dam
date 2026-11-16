@@ -13,7 +13,6 @@
 
 use base64::Engine;
 use chrono::{Duration, Utc};
-use ferrum_kernel::secret::SecretKey;
 use ferrum_kernel::tenant::NewTenant;
 use ferrum_kernel::{Ctx, Db, DbConfig, Doc, Error, HookRegistry, Kernel, KernelSettings, ListQuery, SiteRequest};
 use ferrum_meta::Catalog;
@@ -212,8 +211,7 @@ async fn scenario() {
     ferrum_domain::register(&mut hooks);
     hooks.app("drive", &[], ferrum_app_drive::register);
     ferrum_app_dam::register(&mut hooks);
-    let settings = KernelSettings { secret_key: Some(SecretKey::new([7u8; 32])), ..Default::default() };
-    let k = Kernel::boot(db, catalog, hooks, settings, None).await.expect("boot");
+    let k = Kernel::boot(db, catalog, hooks, KernelSettings::default(), None).await.expect("boot");
     k.set_file_store(Arc::new(MemFiles::default()));
     ferrum_domain::maintenance(&k).await.expect("partitions");
     let tenant = k
