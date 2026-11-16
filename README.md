@@ -7,7 +7,7 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-0.8.9-c2410c?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.10-c2410c?style=flat-square)](CHANGELOG.md)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Ferrum platform](https://img.shields.io/badge/runs%20on-Ferrum-2f5bea?style=flat-square)](https://github.com/CBFerrum/Ferrum)
 ![Rust](https://img.shields.io/badge/Rust-server-b7410e?style=flat-square&logo=rust)
@@ -289,6 +289,7 @@ Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configur
 
 ### ✅ Recently shipped
 
+- [x] **0.8.10** — Rebuilt on Ferrum-Frontend 06bd1a2: its start through `mountApp`, and no routes to the screens apps no longer have.
 - [x] **0.8.9** — Menu icons chosen so none repeats more than three times; a lighter first page; cleaner print.
 - [x] **0.8.8** — The redesigned interface on the upgraded design system; the home on the work-home pattern.
 - [x] **0.8.7** — A personal-data request by name lists the files showing that person as possibly theirs.
@@ -396,7 +397,7 @@ docs/             provenance of the libraries it uses, and screenshots
 
 ## 📜 Changelog
 
-Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.8.9**.
+Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.8.10**.
 
 ## 🤝 Contributing
 
