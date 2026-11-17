@@ -39,7 +39,7 @@ rights, previews, file metadata, collections, usage records and outside sharing 
 
 | | |
 |---|---|
-| **Version** | 0.8.9 (package `dam` 0.1.1) |
+| **Version** | 0.8.10 (package `dam` 0.1.1) |
 | **Kind** | Its own interface at `/dam/` (home, library with thumbnails, an asset seen whole) plus Ferrum's standard lists and forms for every record |
 | **What it adds** | 4 entities, 3 roles, 1 menu with 4 entries, 1 create shortcut, 1 assistant guide; no reports or print formats yet |
 | **Depends on** | Ferrum platform `>=0.3.2, <0.4`; Ferrum Drive `>=0.12` (installing Digital Assets installs Drive) |
