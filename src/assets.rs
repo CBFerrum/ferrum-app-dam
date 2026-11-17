@@ -7,7 +7,7 @@
 
 use crate::obj;
 use async_trait::async_trait;
-use chrono::{NaiveDate, Utc};
+use chrono::NaiveDate;
 use ferrum_domain::util::{b, elevated, id, s};
 use ferrum_kernel::{Ctx, Doc, DocHook, Error, HookCtx, Kernel, Result, Tx};
 use serde_json::{Value, json};
@@ -192,11 +192,6 @@ pub(crate) async fn upkeep(k: &Kernel, ctx: &Ctx, tx: &mut Tx, today: NaiveDate)
         k.set_values_tx(ctx, tx, "MediaAsset", asset, obj(values)).await?;
     }
     Ok(())
-}
-
-/// Today, for callers without a date of their own.
-pub(crate) fn today() -> NaiveDate {
-    Utc::now().date_naive()
 }
 
 pub struct ShareHook;

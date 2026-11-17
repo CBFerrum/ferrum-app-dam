@@ -382,7 +382,7 @@ async fn scenario() {
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": logo_file, "content_base64": b64})).await.expect("a new logo");
     refused(t.k.insert(&user, "AssetUsage", obj(usage(logo, "Web", today))).await, "invalid", "changed since it was approved");
     assert!(matches!(open(&k, tenant, &before).await, Err(Error::NotFound(_))), "its file changed since it was approved: nothing until it is again");
-    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
     let back = t.get("MediaAsset", logo).await;
     assert_eq!(back["status"], "In Review", "back for review once its file changed");
     assert!(back["review_note"].as_str().unwrap().contains("since version 1"));
@@ -391,7 +391,7 @@ async fn scenario() {
     let v2 = open(&k, tenant, &before).await.expect("approved again, the link gives the version approved now");
     assert_ne!(v2, v1);
     t.insert(&user, "AssetUsage", usage(logo, "Web", today)).await;
-    ferrum_app_dam::maintenance_on(&k, last_day + Duration::days(1)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(last_day + Duration::days(1))).await.unwrap();
     assert_eq!(t.status(stock).await, "Expired");
     // An asset archived: its links give nothing more.
     let archived_link =
@@ -415,7 +415,7 @@ async fn scenario() {
     let launch = uid(&t.insert(&maker, "MediaAsset", asset("Launch photo", launch_file, "Owned", json!({}))).await["id"]);
     let mark = uid(&t.insert(&maker, "MediaAsset", asset("Mark", mark_file, "Owned", json!({}))).await["id"]);
     let brief = uid(&t.insert(&maker, "MediaAsset", asset("Brief", brief_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
     let p = t.get("MediaAsset", launch).await;
     assert_eq!((p["width"].as_i64(), p["height"].as_i64()), (Some(1200), Some(1600)), "turned as the camera was held");
     assert_eq!(
@@ -472,7 +472,7 @@ async fn scenario() {
     // A new version is looked at again, and the renditions of the one before go.
     let b64 = base64::engine::general_purpose::STANDARD.encode(photo(800, 600, 200));
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": launch_file, "content_base64": b64})).await.expect("a new photo");
-    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
     let again = t.get("MediaAsset", launch).await;
     assert_eq!((again["status"].as_str(), again["width"].as_i64(), again["height"].as_i64()), (Some("In Review"), Some(600), Some(800)));
     assert_ne!(again["thumbnail"], p["thumbnail"]);
@@ -498,7 +498,7 @@ async fn scenario() {
     // A PDF of one page, 300 by 600 points: its first page drawn makes its renditions.
     let flyer_file = upload("flyer.pdf", one_page_pdf(300, 600)).await;
     let flyer = uid(&t.insert(&maker, "MediaAsset", asset("Flyer", flyer_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
     let d = t.get("MediaAsset", spec).await;
     let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&d["thumbnail"])).await.unwrap();
     assert_eq!((ctype.as_str(), pixels(&bytes)), ("image/jpeg", (200, 320)), "{d:?}");
@@ -519,7 +519,7 @@ async fn scenario() {
     team.extend_from_slice(b"\nendstream endobj\ntrailer << >>\n%%EOF\n");
     let team_file = upload("team.pdf", team).await;
     let team = uid(&t.insert(&maker, "MediaAsset", asset("Team", team_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, today).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
     let tm = t.get("MediaAsset", team).await;
     assert_eq!(
         (tm["file_people"].as_str(), tm["file_place"].as_str(), tm["file_usage_terms"].as_str()),
@@ -564,6 +564,38 @@ async fn scenario() {
     t.act(&brand, press, "archive_asset", Value::Null).await.unwrap();
     refused(t.k.insert(&user, "AssetUsage", obj(usage(press, "Web", today))).await, "invalid", "not approved for use");
     assert!(matches!(open(&k, tenant, &archived_link).await, Err(Error::NotFound(_))), "archived, its links give nothing");
+
+    // ───────────── the upkeep's day is the workspace's ─────────────
+    // No clock is set: the workspace moves to a zone whose day is not UTC's now (Pago Pago before 10:00 UTC, Kiritimati
+    // after, as the platform's own suites do). A licence whose last day was yesterday there runs out; one whose last day
+    // is today there does not.
+    use chrono::Timelike;
+    let zone = if Utc::now().hour() < 10 { "Pacific/Pago_Pago" } else { "Pacific/Kiritimati" };
+    k.update_tenant_settings(&t.admin, &obj(json!({"timezone": zone}))).await.expect("the workspace's zone");
+    let today = k.load_ctx(tenant, t.admin.user, None, "it".into()).await.expect("ctx").today();
+    assert_ne!(today, Utc::now().date_naive(), "{zone}'s day is not UTC's");
+    let mut licensed = Vec::new();
+    for (title, fill) in [("Ran out", 5), ("Last day", 6)] {
+        let file = upload(if fill == 5 { "out.png" } else { "last.png" }, png(fill)).await;
+        let until = json!({"licensor": "Pics Ltd", "usage_expires_on": (today + Duration::days(5)).to_string()});
+        let a = uid(&t.insert(&maker, "MediaAsset", asset(title, file, "Licensed", until)).await["id"]);
+        t.act(&maker, a, "submit_asset", Value::Null).await.unwrap();
+        t.act(&brand, a, "approve_asset", Value::Null).await.unwrap();
+        licensed.push(a);
+    }
+    let mut tx = k.db.tenant_tx(tenant).await.unwrap();
+    for (a, last) in licensed.iter().zip([today - Duration::days(1), today]) {
+        sqlx::query("update e_media_asset set usage_expires_on = $3 where tenant_id = $1 and id = $2")
+            .bind(tenant)
+            .bind(a)
+            .bind(last)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+    ferrum_app_dam::maintenance(&k).await.unwrap();
+    assert_eq!((t.status(licensed[0]).await, t.status(licensed[1]).await), ("Expired".into(), "Approved".into()), "on the workspace's day");
 }
 
 /// A PDF of one page, `w` by `h` points, filled blue; its cross-reference worked out.

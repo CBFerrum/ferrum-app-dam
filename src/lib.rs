@@ -54,13 +54,13 @@ pub fn reports() -> Vec<Arc<dyn ReportSource>> {
 }
 
 /// Upkeep: approved assets expired, or back to review when their file has changed; and renditions
-/// of the assets whose file changed, a few each round.
+/// of the assets whose file changed, a few each round. Each workspace as of its own day.
 pub async fn maintenance(k: &Kernel) -> Result<()> {
-    maintenance_on(k, assets::today()).await
+    maintenance_on(k, None).await
 }
 
-/// [`maintenance`] as of `today`.
-pub async fn maintenance_on(k: &Kernel, today: NaiveDate) -> Result<()> {
+/// [`maintenance`] as of `today`, or each workspace's own day when none is given.
+pub async fn maintenance_on(k: &Kernel, today: Option<NaiveDate>) -> Result<()> {
     let mut tx = k.db.system_tx().await?;
     let tenants: Vec<Uuid> = sqlx::query_scalar("select id from tenant where status = 'active' order by id").fetch_all(&mut *tx).await?;
     tx.commit().await?;
@@ -73,7 +73,7 @@ pub async fn maintenance_on(k: &Kernel, today: NaiveDate) -> Result<()> {
             }
             let ctx = Ctx::system(tenant, schema);
             let mut tx = k.db.tenant_tx(tenant).await?;
-            assets::upkeep(k, &ctx, &mut tx, today).await?;
+            assets::upkeep(k, &ctx, &mut tx, today.unwrap_or_else(|| ctx.today())).await?;
             tx.commit().await?;
             renditions::round(k, &ctx).await?;
             Ok::<(), Error>(())

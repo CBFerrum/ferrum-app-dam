@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.11
+
+Server only. Needs the same platform as 0.8.10. No database change, no interface change.
+
+- **A licence runs out on the workspace's day.** The upkeep expired approved assets past their licence's last day on
+  the UTC day, the same for every workspace: east of UTC an asset stayed usable for the first hours of the day after
+  its last day, west of UTC it was expired in the evening of its last day. Each workspace is now worked on its own day.
+
 ## 0.8.10
 
 Needs the same platform as 0.8.9. No database change. Interface only, `ui/dist` rebuilt with Ferrum-Frontend `06bd1a2`.
