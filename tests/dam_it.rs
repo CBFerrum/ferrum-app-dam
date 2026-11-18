@@ -382,7 +382,7 @@ async fn scenario() {
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": logo_file, "content_base64": b64})).await.expect("a new logo");
     refused(t.k.insert(&user, "AssetUsage", obj(usage(logo, "Web", today))).await, "invalid", "changed since it was approved");
     assert!(matches!(open(&k, tenant, &before).await, Err(Error::NotFound(_))), "its file changed since it was approved: nothing until it is again");
-    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(today)).await.unwrap();
     let back = t.get("MediaAsset", logo).await;
     assert_eq!(back["status"], "In Review", "back for review once its file changed");
     assert!(back["review_note"].as_str().unwrap().contains("since version 1"));
@@ -391,7 +391,7 @@ async fn scenario() {
     let v2 = open(&k, tenant, &before).await.expect("approved again, the link gives the version approved now");
     assert_ne!(v2, v1);
     t.insert(&user, "AssetUsage", usage(logo, "Web", today)).await;
-    ferrum_app_dam::maintenance_on(&k, Some(last_day + Duration::days(1))).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(last_day + Duration::days(1))).await.unwrap();
     assert_eq!(t.status(stock).await, "Expired");
     // An asset archived: its links give nothing more.
     let archived_link =
@@ -415,7 +415,7 @@ async fn scenario() {
     let launch = uid(&t.insert(&maker, "MediaAsset", asset("Launch photo", launch_file, "Owned", json!({}))).await["id"]);
     let mark = uid(&t.insert(&maker, "MediaAsset", asset("Mark", mark_file, "Owned", json!({}))).await["id"]);
     let brief = uid(&t.insert(&maker, "MediaAsset", asset("Brief", brief_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(today)).await.unwrap();
     let p = t.get("MediaAsset", launch).await;
     assert_eq!((p["width"].as_i64(), p["height"].as_i64()), (Some(1200), Some(1600)), "turned as the camera was held");
     assert_eq!(
@@ -472,7 +472,7 @@ async fn scenario() {
     // A new version is looked at again, and the renditions of the one before go.
     let b64 = base64::engine::general_purpose::STANDARD.encode(photo(800, 600, 200));
     k.run_action(&maker, "DriveSpace", space_id, "upload_version", json!({"file": launch_file, "content_base64": b64})).await.expect("a new photo");
-    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(today)).await.unwrap();
     let again = t.get("MediaAsset", launch).await;
     assert_eq!((again["status"].as_str(), again["width"].as_i64(), again["height"].as_i64()), (Some("In Review"), Some(600), Some(800)));
     assert_ne!(again["thumbnail"], p["thumbnail"]);
@@ -498,7 +498,7 @@ async fn scenario() {
     // A PDF of one page, 300 by 600 points: its first page drawn makes its renditions.
     let flyer_file = upload("flyer.pdf", one_page_pdf(300, 600)).await;
     let flyer = uid(&t.insert(&maker, "MediaAsset", asset("Flyer", flyer_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(today)).await.unwrap();
     let d = t.get("MediaAsset", spec).await;
     let (_, ctype, bytes) = t.k.read_file(&t.admin, file_id(&d["thumbnail"])).await.unwrap();
     assert_eq!((ctype.as_str(), pixels(&bytes)), ("image/jpeg", (200, 320)), "{d:?}");
@@ -519,7 +519,7 @@ async fn scenario() {
     team.extend_from_slice(b"\nendstream endobj\ntrailer << >>\n%%EOF\n");
     let team_file = upload("team.pdf", team).await;
     let team = uid(&t.insert(&maker, "MediaAsset", asset("Team", team_file, "Owned", json!({}))).await["id"]);
-    ferrum_app_dam::maintenance_on(&k, Some(today)).await.unwrap();
+    ferrum_app_dam::maintenance_on(&k, tenant, Some(today)).await.unwrap();
     let tm = t.get("MediaAsset", team).await;
     assert_eq!(
         (tm["file_people"].as_str(), tm["file_place"].as_str(), tm["file_usage_terms"].as_str()),
@@ -594,7 +594,7 @@ async fn scenario() {
             .unwrap();
     }
     tx.commit().await.unwrap();
-    ferrum_app_dam::maintenance(&k).await.unwrap();
+    ferrum_app_dam::maintenance(&k, tenant).await.unwrap();
     assert_eq!((t.status(licensed[0]).await, t.status(licensed[1]).await), ("Expired".into(), "Approved".into()), "on the workspace's day");
 }
 

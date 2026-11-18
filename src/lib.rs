@@ -23,7 +23,7 @@ mod watermark;
 
 use chrono::NaiveDate;
 use ferrum_domain::reports::ReportSource;
-use ferrum_kernel::{Ctx, Doc, Error, HookRegistry, Kernel, Result};
+use ferrum_kernel::{Ctx, Doc, HookRegistry, Kernel, Result};
 use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -53,36 +53,20 @@ pub fn reports() -> Vec<Arc<dyn ReportSource>> {
     vec![]
 }
 
-/// Upkeep: approved assets expired, or back to review when their file has changed; and renditions
-/// of the assets whose file changed, a few each round. Each workspace as of its own day.
-pub async fn maintenance(k: &Kernel) -> Result<()> {
-    maintenance_on(k, None).await
+/// Upkeep of one workspace: approved assets expired, or back to review when their file has changed; and renditions
+/// of the assets whose file changed, a few each round. As of the workspace's own day.
+pub async fn maintenance(k: &Kernel, tenant: Uuid) -> Result<()> {
+    maintenance_on(k, tenant, None).await
 }
 
-/// [`maintenance`] as of `today`, or each workspace's own day when none is given.
-pub async fn maintenance_on(k: &Kernel, today: Option<NaiveDate>) -> Result<()> {
-    let mut tx = k.db.system_tx().await?;
-    let tenants: Vec<Uuid> = sqlx::query_scalar("select id from tenant where status = 'active' order by id").fetch_all(&mut *tx).await?;
+/// [`maintenance`] as of `today`, or the workspace's own day when none is given.
+pub async fn maintenance_on(k: &Kernel, tenant: Uuid, today: Option<NaiveDate>) -> Result<()> {
+    let ctx = Ctx::system(tenant, k.registry.schema(tenant).await?);
+    let mut tx = k.db.tenant_tx(tenant).await?;
+    assets::upkeep(k, &ctx, &mut tx, today.unwrap_or_else(|| ctx.today())).await?;
     tx.commit().await?;
-    let mut first_error: Option<Error> = None;
-    for tenant in tenants {
-        let run = async {
-            let schema = k.registry.schema(tenant).await?;
-            if !schema.packages.iter().any(|p| p == "dam") {
-                return Ok(());
-            }
-            let ctx = Ctx::system(tenant, schema);
-            let mut tx = k.db.tenant_tx(tenant).await?;
-            assets::upkeep(k, &ctx, &mut tx, today.unwrap_or_else(|| ctx.today())).await?;
-            tx.commit().await?;
-            renditions::round(k, &ctx).await?;
-            Ok::<(), Error>(())
-        };
-        if let Err(e) = run.await {
-            first_error.get_or_insert(e);
-        }
-    }
-    first_error.map_or(Ok(()), Err)
+    renditions::round(k, &ctx).await?;
+    Ok(())
 }
 
 /// A document from JSON.
