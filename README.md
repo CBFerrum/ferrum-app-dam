@@ -7,7 +7,7 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-0.8.11-c2410c?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-c2410c?style=flat-square)](CHANGELOG.md)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Ferrum platform](https://img.shields.io/badge/runs%20on-Ferrum-2f5bea?style=flat-square)](https://github.com/CBFerrum/Ferrum)
 ![Rust](https://img.shields.io/badge/Rust-server-b7410e?style=flat-square&logo=rust)
@@ -39,10 +39,10 @@ rights, previews, file metadata, collections, usage records and outside sharing 
 
 | | |
 |---|---|
-| **Version** | 0.8.11 (package `dam` 0.1.1) |
+| **Version** | 0.9.0 (package `dam` 0.1.1) |
 | **Kind** | Its own interface at `/dam/` (home, library with thumbnails, an asset seen whole) plus Ferrum's standard lists and forms for every record |
 | **What it adds** | 4 entities, 3 roles, 1 menu with 4 entries, 1 create shortcut, 1 assistant guide; no reports or print formats yet |
-| **Depends on** | Ferrum platform `>=0.3.2, <0.4`; Ferrum Drive `>=0.12` (installing Digital Assets installs Drive) |
+| **Depends on** | Ferrum platform `>=0.4.0, <0.5`; Ferrum Drive `>=0.12` (installing Digital Assets installs Drive) |
 | **Works with** | Drive (the files), the platform's personal-data requests |
 | **Languages** | English, Arabic, Hindi |
 | **Tests** | 12 Rust tests against a real PostgreSQL and a Drive; interface checks in CI |
@@ -289,6 +289,7 @@ Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configur
 
 ### ✅ Recently shipped
 
+- [x] **0.9.0**: Upkeep runs one workspace at a time, on whichever replica is free.
 - [x] **0.8.11** — A licence runs out on the workspace's day, not UTC's.
 - [x] **0.8.10** — Rebuilt on Ferrum-Frontend 06bd1a2: its start through `mountApp`, and no routes to the screens apps no longer have.
 - [x] **0.8.9** — Menu icons chosen so none repeats more than three times; a lighter first page; cleaner print.
@@ -331,7 +332,7 @@ Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configur
 
 ## 🚀 Install
 
-Digital Assets is compiled into the Ferrum server image and installed from **Apps** (`/store/`) by a workspace administrator; installing it installs Ferrum Drive (`>=0.12`). Self-hosters who build their own image enable the `dam` feature of the server. It needs Ferrum `>=0.3.2, <0.4`.
+Digital Assets is compiled into the Ferrum server image and installed from **Apps** (`/store/`) by a workspace administrator; installing it installs Ferrum Drive (`>=0.12`). Self-hosters who build their own image enable the `dam` feature of the server. It needs Ferrum `>=0.4.0, <0.5`.
 
 After installing:
 
@@ -398,7 +399,7 @@ docs/             provenance of the libraries it uses, and screenshots
 
 ## 📜 Changelog
 
-Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.8.11**.
+Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.9.0**.
 
 ## 🤝 Contributing
 

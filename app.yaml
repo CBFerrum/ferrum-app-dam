@@ -1,6 +1,6 @@
 id: dam
 name: Digital Assets
-version: 0.8.11
+version: 0.9.0
 publisher: cbferrum
 summary: "Assets kept in Drive with their rights, renditions and what their files say, seen whole, approved by version, collections, and usage kept within the rights"
 description: README.md
@@ -9,7 +9,7 @@ license: AGPL-3.0-only
 homepage: https://github.com/CBFerrum/ferrum-app-dam
 support: https://github.com/CBFerrum/ferrum-app-dam/issues
 runtime: native
-platform: ">=0.3.2, <0.4"
+platform: ">=0.4.0, <0.5"
 # The files are Drive's: installing it installs Drive.
 requires: {drive: ">=0.12"}
 packages: [dam]
