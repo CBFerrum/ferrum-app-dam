@@ -68,6 +68,25 @@ impl DocHook for AssetHook {
     }
 
     async fn validate_change(&self, hc: &mut HookCtx<'_>, old: Option<&Doc>, doc: &Doc) -> Result<()> {
+        // The same file twice is refused unless allowed. A courtesy, not a key: two saves at the same second may both pass.
+        if old.is_none_or(|o| id(o, "drive_file") != id(doc, "drive_file"))
+            && !b(doc, "allow_duplicate")
+            && let Some(sha) = s(doc, "sha256")
+        {
+            let twin: Option<(Uuid, String, String)> = sqlx::query_as(
+                "select id, title, status from e_media_asset where tenant_id = $1 and sha256 = $2 and id is distinct from $3 and status <> 'Archived' order by created_at, id limit 1",
+            )
+            .bind(hc.ctx.tenant)
+            .bind(sha)
+            .bind(id(doc, "id"))
+            .fetch_optional(&mut **hc.tx)
+            .await?;
+            if let Some((other, title, status)) = twin {
+                let seen = hc.kernel.get_tx(hc.ctx, hc.tx, "MediaAsset", other, false).await.is_ok();
+                let who = if seen { format!(" as “{title}” ({status})") } else { String::new() };
+                return Err(Error::field("drive_file", format!("the same file is already in the library{who}; tick Allow Duplicate to add it again")));
+            }
+        }
         if hc.ctx.is_system {
             return Ok(());
         }

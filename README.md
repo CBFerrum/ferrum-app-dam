@@ -7,7 +7,7 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-0.9.0-c2410c?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.1-c2410c?style=flat-square)](CHANGELOG.md)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Ferrum platform](https://img.shields.io/badge/runs%20on-Ferrum-2f5bea?style=flat-square)](https://github.com/CBFerrum/Ferrum)
 ![Rust](https://img.shields.io/badge/Rust-server-b7410e?style=flat-square&logo=rust)
@@ -39,7 +39,7 @@ rights, previews, file metadata, collections, usage records and outside sharing 
 
 | | |
 |---|---|
-| **Version** | 0.9.0 (package `dam` 0.1.1) |
+| **Version** | 0.9.1 (package `dam` 0.1.2) |
 | **Kind** | Its own interface at `/dam/` (home, library with thumbnails, an asset seen whole) plus Ferrum's standard lists and forms for every record |
 | **What it adds** | 4 entities, 3 roles, 1 menu with 4 entries, 1 create shortcut, 1 assistant guide; no reports or print formats yet |
 | **Depends on** | Ferrum platform `>=0.4.0, <0.5`; Ferrum Drive `>=0.12` (installing Digital Assets installs Drive) |
@@ -247,7 +247,7 @@ Compared with Bynder, Adobe Experience Manager Assets, Canto, Brandfolder and, a
 | Download in a chosen size or format | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Crops, focal points, on-the-fly transforms | ❌ | ✅ | ✅ | 🟡 | 🟡 | 🟡 |
 | Bulk upload with metadata mapping | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Duplicate detection | ❌ | ✅ | ✅ | ✅ | 🟡 | ✅ |
+| Duplicate detection | 🟡 [dup] | ✅ | ✅ | ✅ | 🟡 | ✅ |
 | AI tagging and similar-image search | ❌ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Brand guidelines hub | ❌ | ✅ | 🟡 | 🟡 | ✅ | ❌ |
 | Plugins for Adobe, Figma, Canva, Office | ❌ | ✅ | ✅ | ✅ | ✅ | 🟡 |
@@ -261,7 +261,9 @@ Compared with Bynder, Adobe Experience Manager Assets, Canto, Brandfolder and, a
 Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configure, or only part of the feature.
 
 1. Tags are one free-text field and a collection is one flat link; extra fields can be added in Studio.
-2. Filters on the main fields, including file facts, and the platform's record search; no saved facets and no text search inside files.
+2. Filters on the main fields, including file facts; the search reads an asset's title, tags, description, licensor and what its file says (title, caption, keywords, creator, people, place). No saved facets, no counts, no search page and no text inside files yet.
+
+[dup]: An exact copy of a file already in the library is refused, naming the asset (to someone who may read it), unless Allow Duplicate is ticked. A courtesy, not a key: two saves in the same second may both pass. Re-saved or resized copies are not found yet.
 3. A usage is recorded by a person (or a connected tool), not counted from where an asset is embedded.
 4. Home lists rights ending within 30 days. A scheduled automation in Studio can mail an owner; nothing mails by default.
 5. A share counts its downloads; recorded usages are counted. There is no report of views, downloads or unused assets yet.
@@ -289,6 +291,7 @@ Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configur
 
 ### ✅ Recently shipped
 
+- [x] **0.9.1**: Search reads tags, description, licensor and what a file says; the same file twice is refused unless allowed.
 - [x] **0.9.0**: Upkeep runs one workspace at a time, on whichever replica is free.
 - [x] **0.8.11** — A licence runs out on the workspace's day, not UTC's.
 - [x] **0.8.10** — Rebuilt on Ferrum-Frontend 06bd1a2: its start through `mountApp`, and no routes to the screens apps no longer have.
@@ -305,7 +308,7 @@ Notes. 🟡 for a leader means a higher plan, an add-on, a workflow you configur
 - [ ] Download or share in a chosen size and format (presets for web, print, social).
 - [ ] Bulk upload with metadata mapping, bulk edit and bulk download as a zip.
 - [ ] Share a whole collection or a lightbox by one link.
-- [ ] Duplicate warning using the stored SHA-256.
+- [x] Duplicate warning using the stored SHA-256 (exact copies).
 - [ ] Hierarchical categories and custom field sets by asset type.
 
 **Connected use**
@@ -399,7 +402,7 @@ docs/             provenance of the libraries it uses, and screenshots
 
 ## 📜 Changelog
 
-Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.9.0**.
+Every version is in [CHANGELOG.md](CHANGELOG.md). The latest is **0.9.1**.
 
 ## 🤝 Contributing
 

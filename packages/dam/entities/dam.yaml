@@ -16,10 +16,13 @@
   kind: master
   module: dam
   title_field: title
+  search_fields: [tags, description, licensor, file_title, file_caption, file_keywords, file_credit, file_people, file_place]
+  indexes: [[sha256]]
   description: A file in Drive with what may be done with it, and what the file says of itself. Approved, it is the version approved that may be used, while its rights last.
   fields:
     - {name: title, type: data, required: true, in_list: true}
     - {name: drive_file, type: link, to: DriveFile, required: true, label: File}
+    - {name: allow_duplicate, type: check, no_copy: true, description: "Add it although the same file is already in the library as another asset"}
     - {name: kind, type: data, read_only: true, in_list: true, in_filter: true, description: "From the file"}
     - {name: content_type, type: data, read_only: true}
     - {name: size, type: int, label: Size (Bytes), read_only: true}
