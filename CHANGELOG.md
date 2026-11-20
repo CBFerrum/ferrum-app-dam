@@ -7,6 +7,8 @@ Package `dam` 0.1.2.
 - **Search reads what an asset says.** The asset list's search, the bar's and an agent's find an asset by its tags, description, licensor and what its file says (title, caption, keywords, creator, people, place), not by its title only.
 - **The same file twice is refused**, naming the asset that has it (only to someone who may read that asset), unless Allow Duplicate is ticked. A courtesy, not a key: two saves in the same second may both pass. Re-saved or resized copies are not yet found.
 
+- **Every visible action carries a contract** (submit, approve, send back, archive, share outside, stop a link), so an agent finds them and knows what each does.
+
 A new field (Allow Duplicate) and an index on the file's digest; existing assets are not re-checked.
 
 ## 0.9.0

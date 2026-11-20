@@ -59,16 +59,18 @@
     - {name: rendition_note, type: data, read_only: true, no_copy: true, description: "Why it has no renditions"}
     - {name: renditions_of, type: data, read_only: true, no_copy: true, hidden: true, description: "The digest of the file its renditions and facts were made from"}
   actions:
-    - {name: submit_asset, label: Submit for Review, permission: write, condition: "doc.status == 'Draft'"}
-    - {name: approve_asset, label: Approve It, permission: write, condition: "doc.status == 'In Review'"}
-    - {name: reject_asset, label: Send It Back, permission: write, condition: "doc.status == 'In Review'", params: [{name: note, type: text, label: Why, required: true}]}
-    - {name: archive_asset, label: Archive It, permission: write, condition: "doc.status != 'Archived'"}
+    - {name: submit_asset, label: Submit for Review, permission: write, condition: "doc.status == 'Draft'", contract: {effect: transactional_action, completion: "The asset is In Review, committed with this receipt", returns: {type: object, properties: {status: {type: string}}}}}
+    - {name: approve_asset, label: Approve It, permission: write, condition: "doc.status == 'In Review'", contract: {effect: transactional_action, completion: "The asset is Approved at the file's current version, by this Brand Manager, committed with this receipt; refused while its file names people whose releases are not held", returns: {type: object, properties: {status: {type: string}}}}}
+    - {name: reject_asset, label: Send It Back, permission: write, condition: "doc.status == 'In Review'", params: [{name: note, type: text, label: Why, required: true}], contract: {effect: transactional_action, completion: "The asset is back in Draft with the reason kept on it, committed with this receipt", returns: {type: object, properties: {status: {type: string}}}}}
+    - {name: archive_asset, label: Archive It, permission: write, condition: "doc.status != 'Archived'", contract: {effect: transactional_action, completion: "The asset is Archived, committed with this receipt; it is no longer used or shared", returns: {type: object, properties: {status: {type: string}}}}}
     - {name: share_asset, label: Share It Outside, permission: write, condition: "doc.status == 'Approved'",
        params: [{name: recipient, type: data, label: For, required: true, description: "Who the link is for: a newspaper, a printer, an agency"},
                 {name: channel, type: select, options: [Web, Social, Print, Advertising, Email, Internal], label: Used For, required: true},
                 {name: expires_on, type: date, label: Works Until, required: true},
                 {name: max_downloads, type: int, label: Downloads Allowed, description: "20 when empty"},
-                {name: watermark, type: data, label: Watermark, description: "Words drawn across a picture it downloads, such as Preview or the name it is for; none when empty. Other files go as they are"}]}
+                {name: watermark, type: data, label: Watermark, description: "Words drawn across a picture it downloads, such as Preview or the name it is for; none when empty. Other files go as they are"}],
+       contract: {effect: transactional_action, completion: "A link for the recipient exists, works until the day given and for the downloads allowed, and the use is recorded on the asset, committed with this receipt; the link is in this answer once and only its digest is kept",
+                  returns: {type: object, properties: {link: {type: string}, works_until: {type: string}, downloads: {type: integer}, note: {type: string}}}}}
   list: {columns: [title, kind, collection, license, usage_expires_on, status, usages], sort: created_at desc}
 
 - name: AssetUsage
@@ -106,5 +108,7 @@
     - {name: revoked, type: check, read_only: true, no_copy: true, in_list: true, in_filter: true, label: Stopped}
     - {name: token_hash, type: data, read_only: true, no_copy: true, hidden: true}
   actions:
-    - {name: revoke_share, label: Stop It, permission: write, condition: "!doc.revoked"}
+    - {name: revoke_share, label: Stop It, permission: write, condition: "!doc.revoked",
+       contract: {effect: transactional_action, completion: "The link no longer opens anything, committed with this receipt; stopping it again changes nothing",
+                  returns: {type: object, properties: {revoked: {type: boolean}}}}}
   list: {columns: [asset, recipient, expires_on, downloads, revoked], sort: created_at desc}
