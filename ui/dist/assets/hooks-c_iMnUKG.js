@@ -1,0 +1,1 @@
+import{a as t,s as a}from"./index-DvAqMpr4.js";function l(e,s){const[u,f]=t.useState(!1);return t.useEffect(()=>{let n=!0;return a().canIntent(e,s).then(r=>n&&f(r)).catch(()=>{}),()=>{n=!1}},[e,s]),u}function o(e){t.useEffect(()=>{e&&a().title(e)},[e])}export{o as a,l as u};

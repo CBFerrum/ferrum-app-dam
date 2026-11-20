@@ -311,7 +311,35 @@ async fn scenario() {
         "invalid",
         "keeps its file and rights",
     );
-    t.k.update(&maker, "MediaAsset", logo, obj(json!({"tags": "logo brand mark"})), None).await.expect("its tags are not its rights");
+    t.k.update(&maker, "MediaAsset", logo, obj(json!({"tags": "logo brand mark wordmark", "description": "The primary mark on a light ground"})), None)
+        .await
+        .expect("its tags are not its rights");
+
+    // ───────────── search reads what an asset says; the same file twice ─────────────
+    let found = |ctx: Ctx, q: &'static str| {
+        let k = k.clone();
+        async move {
+            let page = k.list(&ctx, "MediaAsset", &ListQuery { search: Some(q.into()), ..Default::default() }).await.expect("searched");
+            page.rows.iter().map(|r| uid(&r["id"])).collect::<Vec<_>>()
+        }
+    };
+    for q in ["wordmark", "primary mark", "light ground"] {
+        assert_eq!(found(brand.clone(), q).await, vec![logo], "search {q:?} finds it by tags and description");
+    }
+    assert_eq!(found(brand.clone(), "Pics Ltd").await, vec![stock], "by licensor");
+    let dup_file = upload("dup.png", png(50)).await;
+    let dup_asset = |title: &str, extra: Value| asset(title, dup_file, "Owned", extra);
+    let dup_a = uid(&t.insert(&maker, "MediaAsset", dup_asset("Dup A", json!({"description": "needleword"}))).await["id"]);
+    refused(t.k.insert(&maker, "MediaAsset", obj(dup_asset("Dup B", json!({})))).await, "invalid", "already in the library as “Dup A”");
+    t.act(&maker, dup_a, "submit_asset", Value::Null).await.unwrap();
+    assert_eq!(found(brand.clone(), "needleword").await, vec![dup_a]);
+    assert!(found(user.clone(), "needleword").await.is_empty(), "a Media User finds only approved assets by search");
+    assert_eq!(found(user.clone(), "wordmark").await, vec![logo], "and the approved one is found");
+    let dup_b = uid(&t.insert(&maker, "MediaAsset", dup_asset("Dup B", json!({"allow_duplicate": true}))).await["id"]);
+    t.k.update(&maker, "MediaAsset", dup_a, obj(json!({"description": "needleword again"})), None).await.expect("saved again without changing its file");
+    t.act(&brand, dup_b, "archive_asset", Value::Null).await.unwrap();
+    t.act(&brand, dup_a, "archive_asset", Value::Null).await.unwrap();
+    t.insert(&maker, "MediaAsset", dup_asset("Dup C", json!({}))).await; // both twins are archived: it does not count
 
     // ───────────── usage ─────────────
     let usage = |a: Uuid, channel: &str, on: chrono::NaiveDate| json!({"asset": a.to_string(), "channel": channel, "used_on": on.to_string(), "placement": "Home page"});
